@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Two Teamers{% endblock %}</title>
+  <meta name="theme-color" content="#151811">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('main.home') if g.user else url_for('auth.login') }}">TWO <span>TEAMERS</span></a>
+    {% if g.user %}<div class="account"><a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a><a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% endif %}
+  </header>
+  {% for category, message in get_flashed_messages(with_categories=true) %}<p role="alert" class="flash {{ category }}">{{ message }}</p>{% endfor %}
+  <main class="site-main">{% block content %}{% endblock %}</main>
+  <footer>Two Teamers · English football's shared history</footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

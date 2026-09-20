@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | Two Teamers{% endblock %}
+{% block content %}
+<section class="page-head fixture-head"><a class="back-link" href="{{ url_for('main.leagues') if matchweek is defined else url_for('main.teams') }}">Back</a><p class="eyebrow">{{ subtitle }}</p><h1>{{ title }}</h1></section>
+{% if matchweek is defined %}
+<nav class="week-nav" aria-label="Matchweek navigation">
+  <a class="icon-button {{ 'disabled' if matchweek == 1 }}" href="{{ url_for('main.league_fixtures', league_id='premier-league', week=matchweek-1) }}" aria-label="Previous matchweek">&#8592;</a>
+  <span>Matchweek {{ matchweek }} of 38</span>
+  <a class="icon-button {{ 'disabled' if matchweek == 38 }}" href="{{ url_for('main.league_fixtures', league_id='premier-league', week=matchweek+1) }}" aria-label="Next matchweek">&#8594;</a>
+</nav>
+{% endif %}
+{% if coming_soon %}<div class="empty-state"><strong>Games for this selection are coming soon.</strong></div>{% else %}
+<div class="fixture-list">
+{% for item in fixtures %}
+{% set quiz = item.quiz %}
+<a class="fixture-row {{ item.status }}" href="{{ url_for('main.quiz_page', quiz_id=quiz.quiz_id) }}">
+  <time datetime="{{ quiz.fixture_date.isoformat() }}"><strong>{{ quiz.fixture_date.strftime('%d') }}</strong><span>{{ quiz.fixture_date.strftime('%b') }}</span></time>
+  <div class="fixture-clubs"><strong>{{ quiz.home_team }}</strong><span>vs</span><strong>{{ quiz.away_team }}</strong><small>{{ quiz.fixture_date.strftime('%H:%M') }} · {{ quiz.venue }}</small></div>
+  <div class="fixture-progress"><strong>{{ item.solved_count }}/{{ quiz.total_players }}</strong><span>{{ 'found' if item.status == 'playable' else ('opens ' ~ quiz.fixture_date.strftime('%d/%m') if item.status == 'upcoming' else 'expired') }}</span></div>
+</a>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

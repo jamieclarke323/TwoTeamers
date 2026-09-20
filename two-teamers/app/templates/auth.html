@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ "Create account" if mode == "signup" else "Log in" }} | Two Teamers{% endblock %}
+{% block content %}
+<section class="auth-shell"><div class="auth-panel">
+  <p class="eyebrow">{{ "First whistle" if mode == "signup" else "Welcome back" }}</p>
+  <h1>{{ "Create account" if mode == "signup" else "Log in" }}</h1>
+  <form class="auth-form" method="post">
+    <label>Email<input type="email" name="email" required autocomplete="email"></label>
+    <label>Password<input type="password" name="password" required minlength="8" autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}"></label>
+    {% if mode == "signup" %}
+    <label>Which team do you support?
+      <select name="supported_team" required>
+      {% for team in team_choices %}<option value="{{ team }}" {{ 'selected' if team == 'Neutral' }}>{{ team }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <button class="button" type="submit">{{ "Sign up" if mode == "signup" else "Log in" }}</button>
+  </form>
+  <p class="auth-switch">{% if mode == "signup" %}Already registered? <a href="{{ url_for('auth.login') }}">Log in</a>{% else %}New here? <a href="{{ url_for('auth.signup') }}">Create an account</a>{% endif %}</p>
+</div></section>
+{% endblock %}

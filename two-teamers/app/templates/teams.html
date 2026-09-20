@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Pick a team | Two Teamers{% endblock %}
+{% block content %}
+<section class="page-head"><a class="back-link" href="{{ url_for('main.home') }}">Back</a><p class="eyebrow">All 92 clubs</p><h1>Pick a team</h1><p>Choose a club to see its fixture games.</p></section>
+<label class="search-box"><span>Search clubs</span><input id="club-search" type="search" placeholder="Start typing a club name..." autocomplete="off"></label>
+<div class="league-groups" id="club-list">
+{% for league in leagues %}
+<section class="league-group">
+  <div class="section-line"><h2>{{ league.name }}</h2>{% if not league.enabled %}<span class="soon-tag">Games coming soon</span>{% endif %}</div>
+  <div class="club-grid">
+  {% for club in league.clubs %}
+    <a class="club-tile" data-club="{{ club }}" href="{{ url_for('main.team_fixtures', club_slug=club|lower|replace(' ', '-')|replace("'", '')|replace('&', 'and')) }}">
+      <span class="club-mark{% if club in badge_files %} has-badge{% endif %}">{% if club in badge_files %}<img src="{{ url_for('static', filename='img/badges/' ~ badge_files[club]) }}" alt="" loading="lazy">{% else %}{{ club[0] }}{% endif %}</span>
+      <span>{{ club }}</span>
+    </a>
+  {% endfor %}
+  </div>
+</section>
+{% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/teams.js') }}"></script>{% endblock %}

@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import os
+from datetime import timedelta
+from pathlib import Path
+
+from flask import Flask
+
+from .data_loader import load_quizzes
+from .db import close_db, init_db
+
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_DIR.parent
+
+
+def create_app(test_config: dict | None = None) -> Flask:
+    app = Flask(__name__)
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key-change-me"),
+        DATABASE=os.environ.get("DATABASE_PATH", str(PROJECT_DIR / "instance" / "two-teamers.sqlite")),
+        DATA_DIR=os.environ.get("FIXTURES_DIR", str(DATA_DIR)),
+        XLSX_PATH=os.environ.get("PLAYERS_XLSX_PATH", str(DATA_DIR / "2627DataSource.xlsx")),
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+        REMEMBER_COOKIE_DURATION=timedelta(days=30),
+        SESSION_REFRESH_EACH_REQUEST=False,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "0") == "1",
+        BYPASS_AVAILABILITY=os.environ.get("BYPASS_AVAILABILITY", "0") == "1",
+    )
+    if test_config:
+        app.config.update(test_config)
+
+    Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
+    init_db(app)
+    leagues, quizzes = load_quizzes(app.config["DATA_DIR"], app.config["XLSX_PATH"])
+    app.config["LEAGUES"] = leagues
+    app.config["LEAGUES_BY_ID"] = {league.league_id: league for league in leagues}
+    app.config["QUIZZES"] = quizzes
+    app.config["QUIZZES_BY_ID"] = {quiz.quiz_id: quiz for quiz in quizzes}
+
+    from .auth import bp as auth_bp
+    from .routes import bp as main_bp
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
+    app.teardown_appcontext(close_db)
+    return app

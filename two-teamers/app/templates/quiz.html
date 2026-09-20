@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ quiz.home_team }} vs {{ quiz.away_team }} | Two Teamers{% endblock %}
+{% block content %}
+<section class="game-head">
+  <a class="back-link" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>
+  <p class="eyebrow">Matchweek {{ quiz.matchweek }} · {{ quiz.fixture_date.strftime('%d %B %Y') }}</p>
+  <h1>{{ quiz.home_team }} <span>vs</span> {{ quiz.away_team }}</h1>
+  <div class="score"><strong id="solved-count">{{ solved_count }}</strong><span>/ {{ quiz.total_players }} found</span></div>
+</section>
+<section class="game-controls">
+  <form class="guess-form" id="guess-form"><label for="guess-input">Name a player</label><div><input id="guess-input" type="text" placeholder="Type a surname..." autocomplete="off" {{ 'disabled' if completed or given_up }}><button class="button" type="submit" {{ 'disabled' if completed or given_up }}>Guess</button></div><small>Correct spellings submit automatically.</small></form>
+  <div class="game-actions"><button class="text-button" type="button" id="all-clues">Reveal clues for all</button><button class="text-button danger" type="button" id="give-up">Give up</button><button class="icon-button" type="button" id="reset" title="Reset game" aria-label="Reset game">&#8635;</button></div>
+  <p class="feedback" id="feedback" aria-live="polite"></p>
+</section>
+<div class="player-grid" id="player-grid">
+{% for player in players %}
+<button class="player-card {{ 'found' if player.found }}" type="button" data-index="{{ player.index }}" {{ 'disabled' if player.found }}>
+{% if player.found %}<strong>{{ player.name }}</strong><span>{{ quiz.home_team }}: {{ player.home_years }} · {{ player.home_apps }} apps · {{ player.home_goals }} goals</span><span>{{ quiz.away_team }}: {{ player.away_years }} · {{ player.away_apps }} apps · {{ player.away_goals }} goals</span>{% else %}<span class="card-number">{{ loop.index }}</span><strong>Unknown player</strong><span class="clue-holder">Tap for a clue</span>{% endif %}
+</button>
+{% endfor %}
+</div>
+<div class="toast" id="correct-toast" role="status">Correct!</div>
+<dialog id="clue-dialog"><form method="dialog"><button class="dialog-close" value="cancel" aria-label="Close">&times;</button><p class="eyebrow">Need a hand?</p><h2>Choose a clue</h2><div class="clue-options"><label><input type="checkbox" value="apps"> Apps</label><label><input type="checkbox" value="goals"> Goals</label><label><input type="checkbox" value="years"> Years played</label><label><input type="checkbox" value="initials"> Initials</label></div><button class="button" value="default" id="show-clues">Reveal clues</button></form></dialog>
+<script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team}|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>{% endblock %}

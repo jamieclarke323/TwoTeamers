@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard | Two Teamers{% endblock %}
+{% block content %}
+<section class="page-head leaderboard-head">
+  <a class="back-link" href="{{ url_for('main.home') }}">Back</a>
+  <p class="eyebrow">Supporters' table</p>
+  <h1>Leaderboard</h1>
+  <p>Club points are the average score of supporters' games involving their team. Answers found after a clue do not count.</p>
+</section>
+
+<div class="leaderboard-controls">
+  <nav class="mode-toggle" aria-label="Leaderboard period">
+    <a class="{{ 'active' if mode == 'season' }}" href="{{ url_for('main.leaderboard', mode='season') }}">Season</a>
+    <a class="{{ 'active' if mode == 'matchweek' }}" href="{{ url_for('main.leaderboard', mode='matchweek', week=matchweek) }}">Matchweek</a>
+  </nav>
+  {% if mode == 'matchweek' %}
+  <form class="matchweek-picker" method="get">
+    <input type="hidden" name="mode" value="matchweek">
+    <label for="leaderboard-week">Matchweek</label>
+    <select id="leaderboard-week" name="week" onchange="this.form.submit()">
+      {% for week in range(1, maximum_matchweek + 1) %}<option value="{{ week }}" {{ 'selected' if week == matchweek }}>{{ week }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+
+<section class="personal-standing">
+  <div>
+    <p class="eyebrow">Your club ranking</p>
+    <h2>{{ supported_team }}</h2>
+  </div>
+  {% if supported_team == 'Neutral' %}
+    <p><a href="{{ url_for('auth.profile') }}">Choose a team</a> to join its supporter ranking.</p>
+  {% elif personal %}
+    <div class="personal-score"><strong>#{{ personal.rank }}</strong><span>of {{ personal.total_ranked }} ranked fans</span></div>
+    <div class="personal-score"><strong>{{ '%.1f'|format(personal.points) }}</strong><span>points · {{ personal.games_played }} games</span></div>
+  {% else %}
+    <p>Play a {{ supported_team }} fixture to enter the ranking.</p>
+  {% endif %}
+</section>
+
+<div class="leaderboard-table" role="table" aria-label="Team supporter leaderboard">
+  <div class="leaderboard-row leaderboard-labels" role="row"><span>Rank</span><span>Club</span><span>Games</span><span>Points</span></div>
+  {% for row in standings %}
+  <div class="leaderboard-row" role="row" data-team="{{ row.team }}">
+    <span class="rank">{{ row.rank if row.rank is not none else '—' }}</span>
+    <span class="leaderboard-club">
+      <span class="club-mark{% if row.team in badge_files %} has-badge{% endif %}">{% if row.team in badge_files %}<img src="{{ url_for('static', filename='img/badges/' ~ badge_files[row.team]) }}" alt="" loading="lazy">{% else %}{{ row.team[0] }}{% endif %}</span>
+      <strong>{{ row.team }}</strong>
+    </span>
+    <span>{{ row.games_played }}</span>
+    <strong class="points">{{ '%.1f'|format(row.points) if row.points is not none else '—' }}</strong>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

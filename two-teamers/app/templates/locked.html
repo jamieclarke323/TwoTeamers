@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ quiz.home_team }} vs {{ quiz.away_team }} | Two Teamers{% endblock %}
+{% block content %}
+<section class="locked-state">
+  <span class="lock-icon">{{ 'TIME' if status == 'upcoming' else 'CLOSED' }}</span>
+  <p class="eyebrow">{{ quiz.fixture_date.strftime('%A %d %B') }}</p>
+  <h1>{{ quiz.home_team }} <span>vs</span> {{ quiz.away_team }}</h1>
+  {% if status == 'upcoming' %}<p>This game opens at 4am on match day.</p><strong>{{ quiz.unlock_at.strftime('%d %B %Y, %H:%M') }}</strong>{% else %}<p>This game closed 72 hours after opening.</p>{% endif %}
+  <a class="button" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>
+</section>
+{% endblock %}

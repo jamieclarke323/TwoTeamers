@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="home-stage">
+	<div class="home-intro"><p class="eyebrow">The football crossover quiz</p><h1>Two clubs.<br><span>One player.</span></h1><p>Pick your route, choose a fixture, and name every player who represented both sides.</p></div>
+	<div class="choice-grid">
+		<a class="choice-panel" href="{{ url_for('main.teams') }}"><span class="choice-number">01</span><h2>Pick a team</h2><p>Browse all 92 clubs across England's top four divisions.</p><span class="choice-action">Choose your club</span></a>
+		<a class="choice-panel" href="{{ url_for('main.leagues') }}"><span class="choice-number">02</span><h2>Pick a league</h2><p>Start with the current matchweek and choose a fixture.</p><span class="choice-action">Choose your league</span></a>
+	</div>
+</section>
+{% endblock %}

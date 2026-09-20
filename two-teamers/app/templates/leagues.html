@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Pick a league | Two Teamers{% endblock %}
+{% block content %}
+<section class="page-head"><a class="back-link" href="{{ url_for('main.home') }}">Back</a><p class="eyebrow">2026/27 season</p><h1>Pick a league</h1><p>Choose a division, then select a fixture from the current matchweek.</p></section>
+<div class="choice-grid league-choice-grid">
+{% for league in leagues %}
+<a class="choice-panel {{ 'disabled' if not league.enabled }}" href="{{ url_for('main.league_fixtures', league_id=league.league_id) }}">
+  <span class="choice-number">0{{ loop.index }}</span><h2>{{ league.name }}</h2><p>{{ league.clubs|length }} clubs</p><span class="choice-action">{{ 'Browse fixtures' if league.enabled else 'Coming soon' }}</span>
+</a>
+{% endfor %}
+</div>
+{% endblock %}
