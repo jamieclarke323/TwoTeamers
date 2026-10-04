@@ -27,6 +27,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "0") == "1",
         BYPASS_AVAILABILITY=os.environ.get("BYPASS_AVAILABILITY", "0") == "1",
+        REWARDED_ADS_ENABLED=os.environ.get("REWARDED_ADS_ENABLED", "0") == "1",
+        # Blank client ID with ads enabled uses a simulated ad for local testing.
+        ADSENSE_CLIENT_ID=os.environ.get("ADSENSE_CLIENT_ID", ""),
+        ADSENSE_TEST_MODE=os.environ.get("ADSENSE_TEST_MODE", "1") == "1",
     )
     if test_config:
         app.config.update(test_config)

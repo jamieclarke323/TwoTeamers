@@ -10,7 +10,7 @@
   <div class="club-grid">
   {% for club in league.clubs %}
     <a class="club-tile" data-club="{{ club }}" href="{{ url_for('main.team_fixtures', club_slug=club|lower|replace(' ', '-')|replace("'", '')|replace('&', 'and')) }}">
-      <span class="club-mark{% if club in badge_files %} has-badge{% endif %}">{% if club in badge_files %}<img src="{{ url_for('static', filename='img/badges/' ~ badge_files[club]) }}" alt="" loading="lazy">{% else %}{{ club[0] }}{% endif %}</span>
+      <span class="club-mark{% if club in badge_files %} has-badge{% endif %}">{% if club in badge_files %}<img src="{{ url_for('static', filename='img/kits/' ~ badge_files[club]) }}" alt="{{ club }} home kit" loading="lazy">{% else %}{{ club[0] }}{% endif %}</span>
       <span>{{ club }}</span>
     </a>
   {% endfor %}

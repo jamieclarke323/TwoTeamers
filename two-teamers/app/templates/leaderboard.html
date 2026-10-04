@@ -45,7 +45,7 @@
   <div class="leaderboard-row" role="row" data-team="{{ row.team }}">
     <span class="rank">{{ row.rank if row.rank is not none else '—' }}</span>
     <span class="leaderboard-club">
-      <span class="club-mark{% if row.team in badge_files %} has-badge{% endif %}">{% if row.team in badge_files %}<img src="{{ url_for('static', filename='img/badges/' ~ badge_files[row.team]) }}" alt="" loading="lazy">{% else %}{{ row.team[0] }}{% endif %}</span>
+      <span class="club-mark{% if row.team in badge_files %} has-badge{% endif %}">{% if row.team in badge_files %}<img src="{{ url_for('static', filename='img/kits/' ~ badge_files[row.team]) }}" alt="{{ row.team }} home kit" loading="lazy">{% else %}{{ row.team[0] }}{% endif %}</span>
       <strong>{{ row.team }}</strong>
     </span>
     <span>{{ row.games_played }}</span>

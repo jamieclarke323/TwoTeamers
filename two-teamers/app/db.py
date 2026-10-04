@@ -24,9 +24,23 @@ CREATE TABLE IF NOT EXISTS progress (
     score_correct INTEGER NOT NULL DEFAULT 0,
     score_total INTEGER NOT NULL DEFAULT 0,
     score_frozen INTEGER NOT NULL DEFAULT 0,
+    answer_data_json TEXT NOT NULL DEFAULT '{}',
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, quiz_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS guest_progress (
+    visitor_id TEXT NOT NULL,
+    quiz_id TEXT NOT NULL,
+    solved_json TEXT NOT NULL DEFAULT '[]',
+    given_up INTEGER NOT NULL DEFAULT 0,
+    score_started INTEGER NOT NULL DEFAULT 0,
+    score_correct INTEGER NOT NULL DEFAULT 0,
+    score_total INTEGER NOT NULL DEFAULT 0,
+    score_frozen INTEGER NOT NULL DEFAULT 0,
+    answer_data_json TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (visitor_id, quiz_id)
 );
 """
 
@@ -56,26 +70,35 @@ def init_db(app: Flask) -> None:
         connection.execute(
             "ALTER TABLE users ADD COLUMN supported_team TEXT NOT NULL DEFAULT 'Neutral'"
         )
-    progress_columns = {
-        row[1] for row in connection.execute("PRAGMA table_info(progress)").fetchall()
-    }
-    for column, definition in (
-        ("score_started", "INTEGER NOT NULL DEFAULT 0"),
-        ("score_correct", "INTEGER NOT NULL DEFAULT 0"),
-        ("score_total", "INTEGER NOT NULL DEFAULT 0"),
-        ("score_frozen", "INTEGER NOT NULL DEFAULT 0"),
-    ):
-        if column not in progress_columns:
-            connection.execute(f"ALTER TABLE progress ADD COLUMN {column} {definition}")
+    for table in ("progress", "guest_progress"):
+        columns = {
+            row[1] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        for column, definition in (
+            ("score_started", "INTEGER NOT NULL DEFAULT 0"),
+            ("score_correct", "INTEGER NOT NULL DEFAULT 0"),
+            ("score_total", "INTEGER NOT NULL DEFAULT 0"),
+            ("score_frozen", "INTEGER NOT NULL DEFAULT 0"),
+            ("answer_data_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ):
+            if column not in columns:
+                connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
     connection.commit()
     connection.close()
 
 
-def get_progress(user_id: int, quiz_id: str) -> dict:
+def _progress_table(identity: int | str) -> tuple[str, str]:
+    if isinstance(identity, int):
+        return "progress", "user_id"
+    return "guest_progress", "visitor_id"
+
+
+def get_progress(user_id: int | str, quiz_id: str) -> dict:
+    table, identity_column = _progress_table(user_id)
     row = get_db().execute(
-        """SELECT solved_json, given_up, score_started, score_correct,
-                  score_total, score_frozen
-           FROM progress WHERE user_id = ? AND quiz_id = ?""",
+        f"""SELECT solved_json, given_up, score_started, score_correct,
+               score_total, score_frozen, answer_data_json
+            FROM {table} WHERE {identity_column} = ? AND quiz_id = ?""",
         (user_id, quiz_id),
     ).fetchone()
     if row is None:
@@ -86,6 +109,7 @@ def get_progress(user_id: int, quiz_id: str) -> dict:
             "score_correct": 0,
             "score_total": 0,
             "score_frozen": False,
+            "answer_data": {"clues": {}, "solve_order": []},
         }
     return {
         "solved": json.loads(row["solved_json"]),
@@ -94,32 +118,40 @@ def get_progress(user_id: int, quiz_id: str) -> dict:
         "score_correct": row["score_correct"],
         "score_total": row["score_total"],
         "score_frozen": bool(row["score_frozen"]),
+        "answer_data": json.loads(row["answer_data_json"] or "{}"),
     }
 
 
-def save_progress(user_id: int, quiz_id: str, state: dict) -> None:
+def save_progress(user_id: int | str, quiz_id: str, state: dict) -> None:
     db = get_db()
+    table, identity_column = _progress_table(user_id)
     existing = db.execute(
-        """SELECT score_started, score_correct, score_total, score_frozen
-           FROM progress WHERE user_id = ? AND quiz_id = ?""",
+        f"""SELECT score_started, score_correct, score_total, score_frozen,
+               answer_data_json
+            FROM {table} WHERE {identity_column} = ? AND quiz_id = ?""",
         (user_id, quiz_id),
     ).fetchone()
     score_started = state.get("score_started", existing["score_started"] if existing else 0)
     score_correct = state.get("score_correct", existing["score_correct"] if existing else 0)
     score_total = state.get("score_total", existing["score_total"] if existing else 0)
     score_frozen = state.get("score_frozen", existing["score_frozen"] if existing else 0)
+    answer_data = state.get(
+        "answer_data",
+        json.loads(existing["answer_data_json"] or "{}") if existing else {"clues": {}, "solve_order": []},
+    )
     db.execute(
-        """INSERT INTO progress (
-               user_id, quiz_id, solved_json, given_up, score_started,
-               score_correct, score_total, score_frozen, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(user_id, quiz_id) DO UPDATE SET
+        f"""INSERT INTO {table} (
+               {identity_column}, quiz_id, solved_json, given_up, score_started,
+               score_correct, score_total, score_frozen, answer_data_json, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT({identity_column}, quiz_id) DO UPDATE SET
              solved_json = excluded.solved_json,
              given_up = excluded.given_up,
              score_started = excluded.score_started,
              score_correct = excluded.score_correct,
              score_total = excluded.score_total,
              score_frozen = excluded.score_frozen,
+             answer_data_json = excluded.answer_data_json,
              updated_at = CURRENT_TIMESTAMP""",
         (
             user_id,
@@ -130,13 +162,32 @@ def save_progress(user_id: int, quiz_id: str, state: dict) -> None:
             int(score_correct),
             int(score_total),
             int(bool(score_frozen)),
+            json.dumps(answer_data),
         ),
     )
     db.commit()
 
 
-def progress_counts(user_id: int) -> dict[str, tuple[int, bool]]:
+def progress_counts(user_id: int | str) -> dict[str, tuple[int, bool]]:
+    table, identity_column = _progress_table(user_id)
     rows = get_db().execute(
-        "SELECT quiz_id, solved_json, given_up FROM progress WHERE user_id = ?", (user_id,)
+        f"SELECT quiz_id, solved_json, given_up FROM {table} WHERE {identity_column} = ?",
+        (user_id,),
     ).fetchall()
     return {row["quiz_id"]: (len(json.loads(row["solved_json"])), bool(row["given_up"])) for row in rows}
+
+
+def transfer_guest_progress(visitor_id: str, user_id: int) -> None:
+    db = get_db()
+    db.execute(
+        """INSERT INTO progress (
+               user_id, quiz_id, solved_json, given_up, score_started,
+               score_correct, score_total, score_frozen, answer_data_json, updated_at
+           ) SELECT ?, quiz_id, solved_json, given_up, score_started,
+                    score_correct, score_total, score_frozen, answer_data_json, updated_at
+             FROM guest_progress WHERE visitor_id = ?
+           ON CONFLICT(user_id, quiz_id) DO NOTHING""",
+        (user_id, visitor_id),
+    )
+    db.execute("DELETE FROM guest_progress WHERE visitor_id = ?", (visitor_id,))
+    db.commit()

@@ -3,13 +3,14 @@
 {% block content %}
 <section class="game-head">
   <a class="back-link" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>
+  <p class="game-cutoff-note">Only players from 2000 onwards, excluding the most recent season, are valid for this game</p>
   <p class="eyebrow">Matchweek {{ quiz.matchweek }} · {{ quiz.fixture_date.strftime('%d %B %Y') }}</p>
   <h1>{{ quiz.home_team }} <span>vs</span> {{ quiz.away_team }}</h1>
   <div class="score"><strong id="solved-count">{{ solved_count }}</strong><span>/ {{ quiz.total_players }} found</span></div>
 </section>
 <section class="game-controls">
   <form class="guess-form" id="guess-form"><label for="guess-input">Name a player</label><div><input id="guess-input" type="text" placeholder="Type a surname..." autocomplete="off" {{ 'disabled' if completed or given_up }}><button class="button" type="submit" {{ 'disabled' if completed or given_up }}>Guess</button></div><small>Correct spellings submit automatically.</small></form>
-  <div class="game-actions"><button class="text-button" type="button" id="all-clues">Reveal clues for all</button><button class="text-button danger" type="button" id="give-up">Give up</button><button class="icon-button" type="button" id="reset" title="Reset game" aria-label="Reset game">&#8635;</button></div>
+  <div class="game-actions"><button class="text-button" type="button" id="all-clues" {{ 'disabled' if completed or given_up }}>Reveal clues for all</button><button class="text-button danger" type="button" id="give-up" {{ 'disabled' if completed or given_up }}>Give up</button><button class="text-button" type="button" id="share-results" {{ 'hidden' if not (completed or given_up) }}>Share result</button><button class="icon-button" type="button" id="reset" title="Reset game" aria-label="Reset game">&#8635;</button></div>
   <p class="feedback" id="feedback" aria-live="polite"></p>
 </section>
 <div class="player-grid" id="player-grid">
@@ -20,7 +21,20 @@
 {% endfor %}
 </div>
 <div class="toast" id="correct-toast" role="status">Correct!</div>
-<dialog id="clue-dialog"><form method="dialog"><button class="dialog-close" value="cancel" aria-label="Close">&times;</button><p class="eyebrow">Need a hand?</p><h2>Choose a clue</h2><div class="clue-options"><label><input type="checkbox" value="apps"> Apps</label><label><input type="checkbox" value="goals"> Goals</label><label><input type="checkbox" value="years"> Years played</label><label><input type="checkbox" value="initials"> Initials</label></div><button class="button" value="default" id="show-clues">Reveal clues</button></form></dialog>
-<script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team}|tojson }}</script>
+<div class="toast" id="clipboard-toast" role="status">Copied to clipboard!</div>
+<dialog id="share-dialog" class="share-dialog">
+  <form method="dialog">
+    <p class="eyebrow">Full time</p>
+    <h2>Share your results?</h2>
+    <p>Copy your result to the clipboard and challenge your friends.</p>
+    <div class="share-dialog-actions">
+      <button class="button" type="button" id="copy-share-result">Share results</button>
+      <button class="text-button" type="button" id="dismiss-share-result">Not now</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="clue-dialog"><form method="dialog"><button class="dialog-close" value="cancel" aria-label="Close">&times;</button><p class="eyebrow">Need a hand?</p><h2>Choose a clue</h2><div class="clue-options {{ 'locked' if clues_locked }}" id="clue-options"><label><input type="checkbox" value="apps" {{ 'disabled' if clues_locked }}> Apps</label><label><input type="checkbox" value="goals" {{ 'disabled' if clues_locked }}> Goals</label><label><input type="checkbox" value="years" {{ 'disabled' if clues_locked }}> Years played</label><label><input type="checkbox" value="initials" {{ 'disabled' if clues_locked }}> Initials</label></div>{% if ads_enabled %}<div class="ad-gate" id="ad-gate" {{ 'hidden' if not clues_locked }}><p id="ad-gate-message">Watch an ad to unlock clues!</p><button class="button" type="button" id="watch-ad">Watch ad</button></div>{% endif %}<button class="button" value="default" id="show-clues" {{ 'disabled' if clues_locked }}>Reveal clues</button></form></dialog>
+<script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team, "completed": completed, "givenUp": given_up, "shareText": share_text, "adsEnabled": ads_enabled}|tojson }}</script>
+{% if ads_enabled %}<script type="application/json" id="ads-config">{{ {"provider": "adsense" if adsense_client_id else "simulated"}|tojson }}</script>{% endif %}
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>{% endblock %}
+{% block scripts %}{% if ads_enabled %}{% if adsense_client_id %}<script async {% if adsense_test_mode %}data-adbreak-test="on" {% endif %}src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ adsense_client_id|urlencode }}" crossorigin="anonymous"></script>{% endif %}<script src="{{ url_for('static', filename='js/ads.js') }}"></script>{% endif %}<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>{% endblock %}

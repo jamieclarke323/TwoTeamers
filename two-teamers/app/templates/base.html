@@ -9,8 +9,8 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="{{ url_for('main.home') if g.user else url_for('auth.login') }}">TWO <span>TEAMERS</span></a>
-    {% if g.user %}<div class="account"><a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a><a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% endif %}
+    <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
+    {% if g.user %}<div class="account"><a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a><a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
   </header>
   {% for category, message in get_flashed_messages(with_categories=true) %}<p role="alert" class="flash {{ category }}">{{ message }}</p>{% endfor %}
   <main class="site-main">{% block content %}{% endblock %}</main>

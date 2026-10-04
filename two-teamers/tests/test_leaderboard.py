@@ -70,6 +70,21 @@ def test_leaderboard_score_persists(app):
         assert state["score_frozen"] is True
 
 
+def test_answer_tracking_persists_with_progress(app):
+    with app.app_context():
+        user_id = create_user()
+        answer_data = {
+            "clues": {"1": ["apps", "goals"]},
+            "solve_order": [{"index": 2, "clue_count": 0}, {"index": 1, "clue_count": 2}],
+        }
+        save_progress(
+            user_id,
+            "quiz-1",
+            {"solved": [1, 2], "given_up": False, "answer_data": answer_data},
+        )
+        assert get_progress(user_id, "quiz-1")["answer_data"] == answer_data
+
+
 def test_quiz_reset_style_save_preserves_leaderboard_score(app):
     with app.app_context():
         user_id = create_user()
@@ -212,7 +227,9 @@ def test_existing_progress_table_is_migrated(app):
     connection = sqlite3.connect(legacy_path)
     columns = {row[1] for row in connection.execute("PRAGMA table_info(progress)")}
     connection.close()
-    assert {"score_started", "score_correct", "score_total", "score_frozen"} <= columns
+    assert {
+        "score_started", "score_correct", "score_total", "score_frozen", "answer_data_json"
+    } <= columns
 
 
 def test_leaderboard_page_shows_users_points_and_rank(signed_in_client, app):

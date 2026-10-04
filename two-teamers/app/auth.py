@@ -7,7 +7,7 @@ from urllib.parse import urljoin, urlparse
 from flask import Blueprint, current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from .db import get_db
+from .db import get_db, transfer_guest_progress
 
 bp = Blueprint("auth", __name__)
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -76,6 +76,9 @@ def signup():
             )
             db.commit()
             user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+            visitor_id = session.get("visitor_id")
+            if visitor_id:
+                transfer_guest_progress(visitor_id, user["id"])
             session.clear()
             session["user_id"] = user["id"]
             session.permanent = True
@@ -94,6 +97,9 @@ def login():
         if user is None or not check_password_hash(user["password_hash"], password):
             flash("Email or password is incorrect.", "error")
         else:
+            visitor_id = session.get("visitor_id")
+            if visitor_id:
+                transfer_guest_progress(visitor_id, user["id"])
             session.clear()
             session["user_id"] = user["id"]
             session.permanent = True

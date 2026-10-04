@@ -5,9 +5,16 @@
   const feedback = document.getElementById("feedback");
   const toast = document.getElementById("correct-toast");
   const dialog = document.getElementById("clue-dialog");
+  const shareDialog = document.getElementById("share-dialog");
+  const copyShareButton = document.getElementById("copy-share-result");
+  const dismissShareButton = document.getElementById("dismiss-share-result");
+  const shareAgainButton = document.getElementById("share-results");
+  const clipboardToast = document.getElementById("clipboard-toast");
   const clueLabels = {apps: "Apps", goals: "Goals", years: "Years", initials: "Initials"};
   let clueTarget = "all";
   let exactTimer;
+  let shareText = data.shareText || "";
+  const shareDismissedKey = `share-prompt-dismissed-${data.quizId}`;
 
   const request = async (path, body) => {
     const response = await fetch(`/quiz/${data.quizId}/${path}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -20,12 +27,55 @@
     element.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
   };
   const escapeHtml = (value) => { const element = document.createElement("span"); element.textContent = String(value); return element.innerHTML; };
+  const showSharePrompt = (text, force = false) => {
+    if (text) shareText = text;
+    if (shareText && (force || !sessionStorage.getItem(shareDismissedKey)) && !shareDialog.open) shareDialog.showModal();
+  };
+  const showClipboardToast = () => {
+    clipboardToast.classList.add("visible");
+    setTimeout(() => clipboardToast.classList.remove("visible"), 2200);
+  };
+  const copyTextFallback = (text) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (!copied) throw new Error("Clipboard copy failed");
+  };
+  const copyShareResult = async () => {
+    if (!shareText) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareText);
+      } else {
+        copyTextFallback(shareText);
+      }
+      sessionStorage.setItem(shareDismissedKey, "1");
+      shareDialog.close();
+      showClipboardToast();
+    } catch (_error) {
+      feedback.textContent = "Could not access the clipboard. Please allow clipboard access and try again.";
+      feedback.className = "feedback wrong";
+    }
+  };
   const applyGuess = (result) => {
     if (result.status === "correct") {
       fillCard(result.player); input.value = ""; document.getElementById("solved-count").textContent = result.solved_count;
       toast.classList.add("visible"); setTimeout(() => toast.classList.remove("visible"), 1700);
       feedback.textContent = "";
-      if (result.completed) { input.disabled = true; form.querySelector("button").disabled = true; feedback.textContent = "You found every player."; }
+      if (result.completed) {
+        input.disabled = true; form.querySelector("button").disabled = true;
+        document.getElementById("all-clues").disabled = true;
+        document.getElementById("give-up").disabled = true;
+        shareAgainButton.hidden = false;
+        feedback.textContent = "You found every player.";
+        showSharePrompt(result.share_text);
+      }
     } else if (result.status !== "not_exact") { feedback.textContent = result.message || ""; feedback.className = `feedback ${result.status}`; }
   };
   input.addEventListener("input", () => {
@@ -36,11 +86,55 @@
   document.getElementById("player-grid").addEventListener("click", (event) => { const target = event.target.closest(".player-card:not(.found)"); if (target) { clueTarget = Number(target.dataset.index); dialog.showModal(); } });
   document.getElementById("all-clues").addEventListener("click", () => { clueTarget = "all"; dialog.showModal(); });
   document.getElementById("show-clues").addEventListener("click", async (event) => {
-    event.preventDefault(); const types = [...dialog.querySelectorAll("input:checked")].map((item) => item.value); if (!types.length) return;
+    event.preventDefault(); const types = [...dialog.querySelectorAll(".clue-options input:checked")].map((item) => item.value); if (!types.length) return;
     const result = await request("clue", {types, index: clueTarget});
+    if (result.status === "ad_required") { setCluesLocked(true); return; }
     result.clues?.forEach((entry) => { const holder = card(entry.index).querySelector(".clue-holder"); holder.innerHTML = types.map((type) => `<span><strong>${clueLabels[type]}:</strong> ${escapeHtml(entry[type])}</span>`).join(""); });
+    if (data.adsEnabled) setCluesLocked(true);
     dialog.close();
   });
-  document.getElementById("give-up").addEventListener("click", async () => { if (confirm("Reveal every answer and end this game?")) { const result = await request("giveup", {confirm: true}); result.players?.forEach(fillCard); input.disabled = true; } });
+  const setCluesLocked = (locked) => {
+    if (!data.adsEnabled) return;
+    const options = document.getElementById("clue-options");
+    options.classList.toggle("locked", locked);
+    options.querySelectorAll("input").forEach((item) => { item.disabled = locked; if (locked) item.checked = false; });
+    document.getElementById("show-clues").disabled = locked;
+    document.getElementById("ad-gate").hidden = !locked;
+    document.getElementById("ad-gate-message").textContent = "Watch an ad to unlock clues!";
+  };
+  document.getElementById("watch-ad")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const message = document.getElementById("ad-gate-message");
+    button.disabled = true; button.textContent = "Loading ad...";
+    try {
+      const watched = await window.TwoTeamersAds?.showRewardedAd("clue-unlock");
+      const result = watched ? await request("clue-unlock", {}) : null;
+      if (result?.status === "unlocked") setCluesLocked(false);
+      else message.textContent = watched === false ? "The ad didn't finish, so clues are still locked. Please try again." : "No ad available right now. Please try again later.";
+    } catch (_error) {
+      message.textContent = "No ad available right now. Please try again later.";
+    } finally {
+      button.disabled = false; button.textContent = "Watch ad";
+    }
+  });
+  document.getElementById("give-up").addEventListener("click", async () => {
+    if (!confirm("Reveal every answer and end this game?")) return;
+    const result = await request("giveup", {confirm: true});
+    result.players?.forEach(fillCard);
+    input.disabled = true;
+    form.querySelector("button").disabled = true;
+    document.getElementById("all-clues").disabled = true;
+    document.getElementById("give-up").disabled = true;
+    shareAgainButton.hidden = false;
+    showSharePrompt(result.share_text);
+  });
+  copyShareButton.addEventListener("click", copyShareResult);
+  dismissShareButton.addEventListener("click", () => {
+    sessionStorage.setItem(shareDismissedKey, "1");
+    shareDialog.close();
+  });
+  shareAgainButton.addEventListener("click", () => showSharePrompt(shareText, true));
   document.getElementById("reset").addEventListener("click", async () => { if (confirm("Clear your progress for this game?")) { await request("reset", {confirm: true}); location.reload(); } });
+
+  if (data.completed || data.givenUp) showSharePrompt(shareText);
 })();

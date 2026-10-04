@@ -1,23 +1,29 @@
 Ideas for the app:
 
 Day 1:
-- Full coverages of English leagues
-- Time locked games mechanism full in place and working
+##Move login to be optional
+##Make it so that scores are only recorded for more than 72 hours for users who are logged in
+##Make clear when the stats begin
+##Full coverages of English leagues
+##- Time locked games mechanism full in place and working
 - Cookie policy ready
-- Ad placement structure built into the app before ads will appear
+##Ad placement structure built into the app before ads will appear
 - Premium tier options implemented pre-launch
   - No ads
   - Ability to choose teams to compare (internationally?)
 - Google AdSense ticked off before launch
 - Daily streak/success tracking built in
 - Report a bug?
-- Shareability features implemented (e.g., social media sharing, link sharing)
-- Initial clues
+##Shareability features implemented (e.g., social media sharing, link sharing)
+##Not counting this season
+- badge pie game
+##- Initial clues
 
 Day 2:
 - Extra clues
   - position
   - nationality
+  - kits
 - other leagues
   - La Liga
   - Serie A
@@ -26,6 +32,6 @@ Day 2:
   - Eredivisie
   - Primeira Liga
   - Scottish Premiership
-- League table based on supporter's average success %
+##League table based on supporter's average success %
 - Ranking amongst own team's supporters based on success %
-- Kits as clues
+- Push notification reminders

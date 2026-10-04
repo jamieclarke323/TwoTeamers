@@ -1,7 +1,7 @@
 from datetime import timedelta
 import sqlite3
 
-from app.db import get_db, init_db
+from app.db import get_db, get_progress, init_db, save_progress
 
 
 def test_signup_creates_account_and_logs_user_in(client, app):
@@ -102,3 +102,64 @@ def test_existing_database_is_migrated_with_neutral_default(app):
     ).fetchone()[0]
     connection.close()
     assert supported_team == "Neutral"
+
+
+def test_guest_progress_moves_into_new_account_on_signup(client, app):
+    quiz = next(quiz for quiz in app.config["QUIZZES"] if quiz.players)
+    guess = client.post(
+        f"/quiz/{quiz.quiz_id}/guess", json={"guess": quiz.players[0].name}
+    )
+    assert guess.get_json()["status"] == "correct"
+    with client.session_transaction() as browser_session:
+        visitor_id = browser_session["visitor_id"]
+
+    response = client.post(
+        "/signup",
+        data={
+            "email": "guest-upgrade@example.com",
+            "password": "football123",
+            "supported_team": "Arsenal",
+        },
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        user_id = get_db().execute(
+            "SELECT id FROM users WHERE email = ?", ("guest-upgrade@example.com",)
+        ).fetchone()["id"]
+        assert get_progress(user_id, quiz.quiz_id)["solved"] == [0]
+        assert get_db().execute(
+            "SELECT 1 FROM guest_progress WHERE visitor_id = ?", (visitor_id,)
+        ).fetchone() is None
+
+
+def test_guest_progress_moves_into_existing_account_on_login(client, app):
+    client.post(
+        "/signup",
+        data={
+            "email": "existing-fan@example.com",
+            "password": "football123",
+            "supported_team": "Arsenal",
+        },
+    )
+    client.post("/logout")
+    quiz = next(quiz for quiz in app.config["QUIZZES"] if quiz.players)
+    guess = client.post(
+        f"/quiz/{quiz.quiz_id}/guess", json={"guess": quiz.players[0].name}
+    )
+    assert guess.get_json()["status"] == "correct"
+    with client.session_transaction() as browser_session:
+        visitor_id = browser_session["visitor_id"]
+
+    response = client.post(
+        "/login",
+        data={"email": "existing-fan@example.com", "password": "football123"},
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        user_id = get_db().execute(
+            "SELECT id FROM users WHERE email = ?", ("existing-fan@example.com",)
+        ).fetchone()["id"]
+        assert get_progress(user_id, quiz.quiz_id)["solved"] == [0]
+        assert get_db().execute(
+            "SELECT 1 FROM guest_progress WHERE visitor_id = ?", (visitor_id,)
+        ).fetchone() is None

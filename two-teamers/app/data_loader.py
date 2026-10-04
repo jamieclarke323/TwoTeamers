@@ -12,8 +12,9 @@ from zoneinfo import ZoneInfo
 import openpyxl
 
 QUIZ_TIMEZONE = ZoneInfo("Europe/London")
-UNLOCK_HOUR = 4
+UNLOCK_HOUR = 6
 PLAYABLE_HOURS = 72
+MIN_ELIGIBLE_SEASON_START = 1999
 
 LEAGUE_FILES = {
     "premier-league": "2627PremierLeagueFixtures.csv",
@@ -30,6 +31,14 @@ LEAGUE_NAMES = {
 PLAYER_WORKBOOKS = {
     "premier-league": "Two Teamers - PremierLeague.xlsx",
     "championship": "Two Teamers - Championship.xlsx",
+    "league-one": "Two Teamers - League One.xlsx",
+    "league-two": "Two Teamers - League Two.xlsx",
+}
+LEAGUE_PREFIXES = {
+    "premier-league": "pl",
+    "championship": "ch",
+    "league-one": "l1",
+    "league-two": "l2",
 }
 CLUB_ALIASES = {
     "Brighton": "Brighton & Hove Albion",
@@ -47,6 +56,9 @@ WORKBOOK_SHEET_ALIASES = {
     "Brighton & Hove Albion": "Brighton",
     "Coventry City": "Coventry",
     "Norwich City": "Norwich",
+    "Peterborough United": "Peterborough",
+    "Chesterfield": "Chesterfield Town",
+    "Tranmere Rovers": "Tranmere",
 }
 
 _EXTRA_TRANSLITERATIONS = str.maketrans(
@@ -155,22 +167,38 @@ def _club_name(csv_name: str) -> str:
     return CLUB_ALIASES.get(csv_name, csv_name)
 
 
-def _unique_season_players(sheet) -> dict[str, str]:
+def _unique_season_players(sheet) -> dict[str, tuple[str, set[str], bool]]:
     players: dict[str, set[str]] = defaultdict(set)
+    seasons: dict[str, set[str]] = defaultdict(set)
+    current_season_players: set[str] = set()
+    found_current_season = False
     for raw_row in sheet.iter_rows(min_row=3, values_only=True):
         row = tuple(raw_row) + (None,) * max(0, 5 - len(raw_row))
         try:
             player_count = int(row[3] or 0)
         except (TypeError, ValueError):
             continue
+        season = str(row[2] or "").strip()
+        is_current_season_row = not found_current_season and bool(season) and player_count > 0
+        if is_current_season_row:
+            found_current_season = True
         for value in row[4 : 4 + player_count]:
             name = str(value or "").strip()
             if name:
-                players[normalise_name(name)].add(name)
-    return {key: next(iter(names)) for key, names in players.items() if len(names) == 1}
+                key = normalise_name(name)
+                players[key].add(name)
+                if season:
+                    seasons[key].add(season)
+                if is_current_season_row:
+                    current_season_players.add(key)
+    return {
+        key: (next(iter(names)), seasons.get(key, set()), key in current_season_players)
+        for key, names in players.items()
+        if len(names) == 1
+    }
 
 
-def _unique_stats_players(sheet) -> dict[str, ClubPlayer]:
+def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
     records: dict[str, list[ClubPlayer]] = defaultdict(list)
     for raw_row in sheet.iter_rows(values_only=True):
         row = tuple(raw_row) + (None,) * max(0, 6 - len(raw_row))
@@ -186,7 +214,22 @@ def _unique_stats_players(sheet) -> dict[str, ClubPlayer]:
                 goals=clean_value(row[4]),
             )
         )
-    return {key: values[0] for key, values in records.items() if len(values) == 1}
+    unique = {key: values[0] for key, values in records.items() if len(values) == 1}
+    ambiguous = {key for key, values in records.items() if len(values) > 1}
+    return unique, ambiguous
+
+
+def _played_in_eligible_season(years: str) -> bool:
+    """Return true if a season year or year range includes 1999-2000 or later."""
+    season_years = [int(value) for value in re.findall(r"\d{4}", years)]
+    if not season_years:
+        return False
+    # A single year such as 1999 means the 1999-2000 season. Ranges are
+    # calendar-year bounds, so 1998-1999 is pre-cutoff while 1998-2001 spans
+    # at least one eligible season.
+    if len(season_years) == 1:
+        return season_years[0] >= MIN_ELIGIBLE_SEASON_START
+    return max(season_years) >= MIN_ELIGIBLE_SEASON_START + 1
 
 
 def load_club_players(xlsx_path: str | Path, clubs: set[str]) -> dict[str, dict[str, ClubPlayer]]:
@@ -195,18 +238,24 @@ def load_club_players(xlsx_path: str | Path, clubs: set[str]) -> dict[str, dict[
     for club in sorted(clubs):
         sheet_name = WORKBOOK_SHEET_ALIASES.get(club, club)
         stats_sheet_name = f"{sheet_name}Stats"
-        if sheet_name not in workbook.sheetnames or stats_sheet_name not in workbook.sheetnames:
+        if sheet_name not in workbook.sheetnames:
             continue
         season_players = _unique_season_players(workbook[sheet_name])
-        stats_players = _unique_stats_players(workbook[stats_sheet_name])
+        stats_players, ambiguous_stats = (
+            _stats_players(workbook[stats_sheet_name])
+            if stats_sheet_name in workbook.sheetnames
+            else ({}, set())
+        )
         rosters[club] = {
             key: ClubPlayer(
-                name=season_players[key],
-                years=stats_players[key].years,
-                apps=stats_players[key].apps,
-                goals=stats_players[key].goals,
+                name=season_players[key][0],
+                years=stats_players[key].years if key in stats_players else "",
+                apps=stats_players[key].apps if key in stats_players else "",
+                goals=stats_players[key].goals if key in stats_players else "",
             )
-            for key in season_players.keys() & stats_players.keys()
+            for key in season_players
+            if key not in ambiguous_stats
+            and any(_played_in_eligible_season(season) for season in season_players[key][1])
         }
     return rosters
 
@@ -234,7 +283,7 @@ def load_quizzes(data_dir: str | Path, _legacy_xlsx_path: str | Path | None = No
     for league_id, workbook_name in PLAYER_WORKBOOKS.items():
         clubs = set(clubs_by_league[league_id])
         rosters = load_club_players(data_dir / workbook_name, clubs)
-        prefix = "pl" if league_id == "premier-league" else "ch"
+        prefix = LEAGUE_PREFIXES[league_id]
         for row in load_fixture_rows(data_dir, league_id):
             home_team = _club_name(row["Home Team"].strip())
             away_team = _club_name(row["Away Team"].strip())
