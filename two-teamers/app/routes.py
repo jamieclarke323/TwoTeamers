@@ -83,7 +83,19 @@ def team_fixtures(club_slug):
         abort(404)
     quizzes = [quiz for quiz in current_app.config["QUIZZES"] if club in (quiz.home_team, quiz.away_team)]
     counts = progress_counts(_progress_identity())
-    return render_template("fixtures.html", title=club, subtitle="2026/27 fixtures", fixtures=[_fixture_view(q, counts) for q in quizzes], coming_soon=not quizzes)
+    fixtures = [_fixture_view(quiz, counts) for quiz in quizzes]
+    auto_scroll_quiz_id = next(
+        (item["quiz"].quiz_id for item in fixtures if item["status"] == "playable"),
+        None,
+    )
+    return render_template(
+        "fixtures.html",
+        title=club,
+        subtitle="2026/27 fixtures",
+        fixtures=fixtures,
+        coming_soon=not quizzes,
+        auto_scroll_quiz_id=auto_scroll_quiz_id,
+    )
 
 
 @bp.route("/leagues")

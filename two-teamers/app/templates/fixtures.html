@@ -13,7 +13,7 @@
 <div class="fixture-list">
 {% for item in fixtures %}
 {% set quiz = item.quiz %}
-<a class="fixture-row {{ item.status }}" href="{{ url_for('main.quiz_page', quiz_id=quiz.quiz_id) }}">
+<a class="fixture-row {{ item.status }}" {% if auto_scroll_quiz_id is defined and quiz.quiz_id == auto_scroll_quiz_id %}id="first-playable-fixture"{% endif %} href="{{ url_for('main.quiz_page', quiz_id=quiz.quiz_id) }}">
   <time datetime="{{ quiz.fixture_date.isoformat() }}"><strong>{{ quiz.fixture_date.strftime('%d') }}</strong><span>{{ quiz.fixture_date.strftime('%b') }}</span></time>
   <div class="fixture-clubs"><strong>{{ quiz.home_team }}</strong><span>vs</span><strong>{{ quiz.away_team }}</strong><small>{{ quiz.fixture_date.strftime('%H:%M') }} · {{ quiz.venue }}</small></div>
   <div class="fixture-progress"><strong>{{ item.solved_count }}/{{ quiz.total_players }}</strong><span>{{ 'No shared players in data' if item.status == 'no_answers' else ('found' if item.status == 'playable' else ('opens ' ~ quiz.fixture_date.strftime('%d/%m') if item.status == 'upcoming' else 'expired')) }}</span></div>
@@ -22,3 +22,4 @@
 </div>
 {% endif %}
 {% endblock %}
+{% block scripts %}{% if auto_scroll_quiz_id is defined and auto_scroll_quiz_id %}<script src="{{ url_for('static', filename='js/fixture-scroll.js') }}"></script>{% endif %}{% endblock %}

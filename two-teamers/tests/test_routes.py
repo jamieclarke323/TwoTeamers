@@ -48,6 +48,22 @@ def test_premier_league_page_lists_one_matchweek(signed_in_client):
     assert response.data.count(b'class="fixture-row') == 10
 
 
+def test_team_fixtures_auto_scroll_to_first_playable_fixture(client, app):
+    team = "Arsenal"
+    first_playable = next(
+        quiz
+        for quiz in app.config["QUIZZES"]
+        if team in (quiz.home_team, quiz.away_team)
+    )
+    response = client.get("/team/arsenal")
+    assert response.status_code == 200
+    assert (
+        f'id="first-playable-fixture" href="/quiz/{first_playable.quiz_id}"'.encode()
+        in response.data
+    )
+    assert b"js/fixture-scroll.js" in response.data
+
+
 def test_upcoming_fixture_status_shows_fixture_date(signed_in_client, app):
     app.config["BYPASS_AVAILABILITY"] = False
     quiz = next(quiz for quiz in app.config["QUIZZES"] if quiz.availability() == "upcoming")
