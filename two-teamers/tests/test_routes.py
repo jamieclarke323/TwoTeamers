@@ -24,15 +24,15 @@ def test_home_offers_team_and_league_paths(signed_in_client):
 def test_pwa_manifest_and_badge_icon_are_linked(client):
     page = client.get("/")
     assert b'rel="manifest"' in page.data
-    assert b"two-teamers-app-icon.svg" in page.data
+    assert b"two-teamers-app-icon.png" in page.data
 
     manifest = client.get("/static/manifest.webmanifest")
     assert manifest.status_code == 200
     assert b'"display": "standalone"' in manifest.data
-    assert b'"purpose": "any maskable"' in manifest.data
-    icon = client.get("/static/img/two-teamers-app-icon.svg")
+    assert b'"type": "image/png"' in manifest.data
+    icon = client.get("/static/img/two-teamers-app-icon.png")
     assert icon.status_code == 200
-    assert b"<svg" in icon.data
+    assert icon.data.startswith(b"\x89PNG")
 
 
 def test_team_picker_contains_all_92_clubs(signed_in_client):
