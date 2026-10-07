@@ -39,7 +39,8 @@ def test_team_picker_contains_all_92_clubs(signed_in_client):
     response = signed_in_client.get("/teams")
     assert response.status_code == 200
     assert response.data.count(b'data-club="') == 92
-    assert response.data.count(b"/static/img/kits/") == 92
+    # Featured banner kits are decorative (alt=""), so only club tiles match.
+    assert response.data.count(b' home kit"') == 92
     assert b"/static/img/kits/Arsenal.png" in response.data
     assert b'data-club="Sunderland"' in response.data
     assert b"/static/img/kits/Sunderland.png" in response.data

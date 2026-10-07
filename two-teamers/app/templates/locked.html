@@ -6,6 +6,6 @@
   <p class="eyebrow">{{ quiz.fixture_date.strftime('%A %d %B') }}</p>
   <h1>{{ quiz.home_team }} <span>vs</span> {{ quiz.away_team }}</h1>
   {% if status == 'no_answers' %}<p>The current player data does not list any players who have represented both clubs in this fixture.</p>{% elif status == 'upcoming' %}<p>This game opens at 6am (UK time)on match day.</p><strong>{{ quiz.unlock_at.strftime('%d %B %Y, %H:%M') }}</strong>{% else %}<p>This game has now closed.</p>{% endif %}
-  <a class="button" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>
+  {% if quiz.is_featured %}<a class="button" href="{{ url_for('main.home') }}">Back to home</a>{% else %}<a class="button" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>{% endif %}
 </section>
 {% endblock %}

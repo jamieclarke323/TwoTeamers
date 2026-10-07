@@ -4,6 +4,7 @@ from pathlib import Path
 from app.data_loader import (
     PLAYABLE_HOURS,
     QUIZ_TIMEZONE,
+    UNLOCK_HOUR,
     _played_in_eligible_season,
     _unique_season_players,
     load_all_clubs,
@@ -153,10 +154,10 @@ def test_loaded_fixture_players_are_only_present_at_both_clubs_since_cutoff():
             assert player.name in {p.name for p in rosters[quiz.away_team].values()}
 
 
-def test_fixture_playable_window_matches_configured_hours_from_4am():
+def test_fixture_playable_window_matches_configured_hours_from_unlock_hour():
     _, quizzes = load_quizzes(ROOT)
     quiz = quizzes[0]
-    assert quiz.unlock_at.hour == 4
+    assert quiz.unlock_at.hour == UNLOCK_HOUR
     assert quiz.lock_at == quiz.unlock_at + timedelta(hours=PLAYABLE_HOURS)
     assert quiz.availability(quiz.unlock_at) == "playable"
     assert quiz.availability(quiz.lock_at) == "expired"
@@ -173,5 +174,5 @@ def test_fulham_manchester_united_window_matches_fixture_date():
         and quiz.fixture_date.day == 20
         and quiz.fixture_date.month == 9
     )
-    assert quiz.unlock_at.isoformat() == "2026-09-20T04:00:00+01:00"
+    assert quiz.unlock_at.isoformat() == f"2026-09-20T{UNLOCK_HOUR:02d}:00:00+01:00"
     assert quiz.lock_at == quiz.unlock_at + timedelta(hours=PLAYABLE_HOURS)

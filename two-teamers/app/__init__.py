@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from .data_loader import load_quizzes
+from .data_loader import FEATURED_WORKBOOK, load_game_data
 from .db import close_db, init_db
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -34,14 +34,19 @@ def create_app(test_config: dict | None = None) -> Flask:
     )
     if test_config:
         app.config.update(test_config)
+    app.config.setdefault(
+        "FEATURED_XLSX_PATH",
+        os.environ.get("FEATURED_XLSX_PATH", str(Path(app.config["DATA_DIR"]) / FEATURED_WORKBOOK)),
+    )
 
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     init_db(app)
-    leagues, quizzes = load_quizzes(app.config["DATA_DIR"], app.config["XLSX_PATH"])
+    leagues, quizzes, featured = load_game_data(app.config["DATA_DIR"], app.config["FEATURED_XLSX_PATH"])
     app.config["LEAGUES"] = leagues
     app.config["LEAGUES_BY_ID"] = {league.league_id: league for league in leagues}
     app.config["QUIZZES"] = quizzes
-    app.config["QUIZZES_BY_ID"] = {quiz.quiz_id: quiz for quiz in quizzes}
+    app.config["FEATURED_QUIZZES"] = featured
+    app.config["QUIZZES_BY_ID"] = {quiz.quiz_id: quiz for quiz in [*quizzes, *featured]}
 
     from .auth import bp as auth_bp
     from .routes import bp as main_bp

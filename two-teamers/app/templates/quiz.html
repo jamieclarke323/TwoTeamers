@@ -2,9 +2,9 @@
 {% block title %}{{ quiz.home_team }} vs {{ quiz.away_team }} | Two Teamers{% endblock %}
 {% block content %}
 <section class="game-head">
-  <a class="back-link" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>
+  {% if quiz.is_featured %}<a class="back-link" href="{{ url_for('main.home') }}">Back to home</a>{% else %}<a class="back-link" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>{% endif %}
   <p class="game-cutoff-note">Only players from 2000 onwards, excluding the most recent season, are valid for this game</p>
-  <p class="eyebrow">Matchweek {{ quiz.matchweek }} · {{ quiz.fixture_date.strftime('%d %B %Y') }}</p>
+  <p class="eyebrow">{% if quiz.is_featured %}{{ 'Wildcard' if quiz.wildcard else 'Featured fixture' }}{% else %}Matchweek {{ quiz.matchweek }}{% endif %} · {{ quiz.fixture_date.strftime('%d %B %Y') }}</p>
   <h1>{{ quiz.home_team }} <span>vs</span> {{ quiz.away_team }}</h1>
   <div class="score"><strong id="solved-count">{{ solved_count }}</strong><span>/ {{ quiz.total_players }} found</span></div>
 </section>

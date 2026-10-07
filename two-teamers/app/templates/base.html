@@ -15,6 +15,17 @@
     <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
     {% if g.user %}<div class="account"><a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a><a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
   </header>
+  {% if featured_fixture and not hide_featured_banner %}{% set featured = featured_fixture.quiz %}
+  <a class="featured-fixture" href="{{ url_for('main.featured_game') }}" aria-label="Play today's featured fixture: {{ featured.home_team }} vs {{ featured.away_team }}">
+    <span class="featured-label">Today's featured fixture</span>
+    <span class="featured-match">
+      <span class="featured-team home">{% if featured_fixture.home_kit %}<img src="{{ url_for('static', filename='img/kits/' ~ featured_fixture.home_kit) }}" alt="">{% endif %}<strong>{{ featured.home_team }}</strong></span>
+      <span class="featured-vs">vs</span>
+      <span class="featured-team away"><strong>{{ featured.away_team }}</strong>{% if featured_fixture.away_kit %}<img src="{{ url_for('static', filename='img/kits/' ~ featured_fixture.away_kit) }}" alt="">{% endif %}</span>
+    </span>
+    <span class="featured-cta">Play &rarr;</span>
+  </a>
+  {% endif %}
   {% for category, message in get_flashed_messages(with_categories=true) %}<p role="alert" class="flash {{ category }}">{{ message }}</p>{% endfor %}
   <main class="site-main">{% block content %}{% endblock %}</main>
   <footer>Two Teamers · English football's shared history</footer>

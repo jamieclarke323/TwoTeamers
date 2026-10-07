@@ -1,18 +1,42 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
-from flask import Blueprint, abort, current_app, g, jsonify, render_template, request, session
+from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, session, url_for
 
 from .auth import login_required
 from .badges import BADGE_FILES
-from .data_loader import QUIZ_TIMEZONE, slugify
+from .data_loader import FEATURED_UNLOCK, QUIZ_TIMEZONE, slugify
 from .db import get_db, get_progress, progress_counts, save_progress
 from .leaderboard import calculate_standings, fan_standing
 from .matching import MatchResult, match_guess
 
 bp = Blueprint("main", __name__)
+
+
+def todays_featured_quiz(now: datetime | None = None):
+    now = now or datetime.now(QUIZ_TIMEZONE)
+    # Each featured game opens at 00:01, so 00:00-00:00:59 still belongs to the previous day.
+    featured_day = (now - timedelta(hours=FEATURED_UNLOCK.hour, minutes=FEATURED_UNLOCK.minute)).date()
+    return next(
+        (quiz for quiz in current_app.config.get("FEATURED_QUIZZES", []) if quiz.fixture_date.date() == featured_day),
+        None,
+    )
+
+
+@bp.app_context_processor
+def inject_featured_fixture():
+    quiz = todays_featured_quiz()
+    if quiz is None:
+        return {"featured_fixture": None}
+    return {
+        "featured_fixture": {
+            "quiz": quiz,
+            "home_kit": BADGE_FILES.get(quiz.home_team),
+            "away_kit": BADGE_FILES.get(quiz.away_team),
+        }
+    }
 
 
 def _quiz_or_404(quiz_id):
@@ -173,15 +197,30 @@ def league_fixtures(league_id):
     )
 
 
+@bp.route("/featured")
+def featured_game():
+    quiz = todays_featured_quiz()
+    if quiz is None:
+        flash("There's no featured fixture today. Check back tomorrow!", "info")
+        return redirect(url_for("main.home"))
+    return _render_quiz(quiz)
+
+
 @bp.route("/quiz/<quiz_id>")
 def quiz_page(quiz_id):
     quiz = _quiz_or_404(quiz_id)
+    if quiz.is_featured and quiz is todays_featured_quiz():
+        return redirect(url_for("main.featured_game"))
+    return _render_quiz(quiz)
+
+
+def _render_quiz(quiz):
     if quiz.total_players == 0:
-        return render_template("locked.html", quiz=quiz, status="no_answers")
+        return render_template("locked.html", quiz=quiz, status="no_answers", hide_featured_banner=True)
     status = _availability(quiz)
     if status != "playable":
-        return render_template("locked.html", quiz=quiz, status=status)
-    state = get_progress(_progress_identity(), quiz_id)
+        return render_template("locked.html", quiz=quiz, status=status, hide_featured_banner=True)
+    state = get_progress(_progress_identity(), quiz.quiz_id)
     solved = set(state["solved"])
     players = [
         {"found": index in solved or state["given_up"], **(_public_player(quiz, player, index) if index in solved or state["given_up"] else {"index": index})}
@@ -201,6 +240,7 @@ def quiz_page(quiz_id):
         clues_locked=ads_enabled and not _answer_data(state).get("clue_unlocked", False),
         adsense_client_id=current_app.config["ADSENSE_CLIENT_ID"],
         adsense_test_mode=current_app.config["ADSENSE_TEST_MODE"],
+        hide_featured_banner=True,
     )
 
 
