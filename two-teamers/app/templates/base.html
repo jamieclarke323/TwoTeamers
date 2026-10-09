@@ -13,7 +13,7 @@
 <body>
   <header class="site-header">
     <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
-    {% if g.user %}<div class="account"><a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a><a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
+    {% if g.user %}<div class="account">{% if config.LEADERBOARD_ENABLED %}<a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a>{% endif %}<a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
   </header>
   {% if featured_fixture and not hide_featured_banner %}{% set featured = featured_fixture.quiz %}
   <a class="featured-fixture" href="{{ url_for('main.featured_game') }}" aria-label="Play today's featured fixture: {{ featured.home_team }} vs {{ featured.away_team }}">

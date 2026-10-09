@@ -3,13 +3,12 @@
 {% block content %}
 <section class="game-head">
   {% if quiz.is_featured %}<a class="back-link" href="{{ url_for('main.home') }}">Back to home</a>{% else %}<a class="back-link" href="{{ url_for('main.league_fixtures', league_id=quiz.league_id, week=quiz.matchweek) }}">Back to fixtures</a>{% endif %}
-  <p class="game-cutoff-note">Only players from 2000 onwards are valid for this game</p>
   <p class="eyebrow">{% if quiz.is_featured %}{{ 'Wildcard' if quiz.wildcard else 'Featured fixture' }}{% else %}Matchweek {{ quiz.matchweek }}{% endif %} · {{ quiz.fixture_date.strftime('%d %B %Y') }}</p>
   <h1>{{ quiz.home_team }} <span>vs</span> {{ quiz.away_team }}</h1>
   <div class="score"><strong id="solved-count">{{ solved_count }}</strong><span>/ {{ quiz.total_players }} found</span></div>
 </section>
 <section class="game-controls">
-  <form class="guess-form" id="guess-form"><label for="guess-input">Name a player</label><div><input id="guess-input" type="text" placeholder="Type a surname..." autocomplete="off" {{ 'disabled' if completed or given_up }}><button class="button" type="submit" {{ 'disabled' if completed or given_up }}>Guess</button></div></form>
+  <form class="guess-form" id="guess-form"><label for="guess-input">Name a player</label><div><input id="guess-input" type="text" placeholder="Type a surname..." autocomplete="off" {{ 'disabled' if completed or given_up }}><button class="button" type="submit" {{ 'disabled' if completed or given_up }}>Guess</button></div><small>Only players who played for BOTH clubs from 2000 onwards are valid for this game. If they played for one club before 2000 and one after, they will not be counted, sorry.</small></form>
   <div class="game-actions"><button class="text-button" type="button" id="all-clues" {{ 'disabled' if completed or given_up }}>Reveal clues for all</button><button class="text-button danger" type="button" id="give-up" {{ 'disabled' if completed or given_up }}>Give up</button><button class="text-button" type="button" id="share-results" {{ 'hidden' if not (completed or given_up) }}>Share result</button><button class="icon-button" type="button" id="reset" title="Reset game" aria-label="Reset game">&#8635;</button></div>
   <p class="feedback" id="feedback" aria-live="polite"></p>
 </section>

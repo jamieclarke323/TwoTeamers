@@ -230,7 +230,8 @@ def test_expired_quiz_is_locked(signed_in_client, app):
     assert response.get_json()["status"] == "expired"
 
 
-def test_leaderboard_lists_all_teams_and_period_controls(signed_in_client):
+def test_leaderboard_lists_all_teams_and_period_controls(signed_in_client, app):
+    app.config["LEADERBOARD_ENABLED"] = True
     response = signed_in_client.get("/leaderboard")
     assert response.status_code == 200
     assert response.data.count(b'data-team="') == 92
@@ -241,7 +242,8 @@ def test_leaderboard_lists_all_teams_and_period_controls(signed_in_client):
     assert b">Fans<" not in labels
 
 
-def test_matchweek_leaderboard_renders_selected_week(signed_in_client):
+def test_matchweek_leaderboard_renders_selected_week(signed_in_client, app):
+    app.config["LEADERBOARD_ENABLED"] = True
     response = signed_in_client.get("/leaderboard?mode=matchweek&week=3")
     assert response.status_code == 200
     assert b'<option value="3" selected>3</option>' in response.data
@@ -278,9 +280,15 @@ def test_guest_game_progress_persists_in_same_browser(client, app):
     assert quiz.players[0].name.encode() in page.data
 
 
-def test_profile_and_leaderboard_still_require_login(client):
+def test_profile_and_leaderboard_still_require_login(client, app):
+    app.config["LEADERBOARD_ENABLED"] = True
     assert client.get("/profile").location.endswith("/login?next=/profile")
     assert client.get("/leaderboard").location.endswith("/login?next=/leaderboard")
+
+
+def test_leaderboard_is_hidden_by_default(signed_in_client):
+    assert signed_in_client.get("/leaderboard").status_code == 404
+    assert b">Leaderboard<" not in signed_in_client.get("/").data
 
 
 def test_zero_overlap_fixture_is_explained_not_rendered_as_empty_quiz(signed_in_client, app):

@@ -128,8 +128,14 @@ def leagues():
 
 
 @bp.route("/leaderboard")
-@login_required
 def leaderboard():
+    if not current_app.config.get("LEADERBOARD_ENABLED", False):
+        abort(404)
+    return _leaderboard_page()
+
+
+@login_required
+def _leaderboard_page():
     mode = request.args.get("mode", "season")
     if mode not in ("season", "matchweek"):
         mode = "season"

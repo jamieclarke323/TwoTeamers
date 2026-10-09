@@ -35,7 +35,7 @@
     <div class="personal-score"><strong>#{{ personal.rank }}</strong><span>of {{ personal.total_ranked }} ranked fans</span></div>
     <div class="personal-score"><strong>{{ '%.1f'|format(personal.points) }}</strong><span>points · {{ personal.games_played }} games</span></div>
   {% else %}
-    <p>Play a {{ supported_team }} fixture to enter the ranking.</p>
+    <p>Play a {{ supported_team }} fixture to enter the ranking. Wildcard fixtures featured as a daily game will not be counted.</p>
   {% endif %}
 </section>
 

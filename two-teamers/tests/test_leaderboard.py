@@ -243,6 +243,7 @@ def test_leaderboard_page_shows_users_points_and_rank(signed_in_client, app):
         db.execute("UPDATE users SET supported_team = 'Arsenal' WHERE id = 1")
         db.commit()
         save_score(1, quiz.quiz_id, 8, 10)
+    app.config["LEADERBOARD_ENABLED"] = True
     response = signed_in_client.get("/leaderboard")
     assert response.status_code == 200
     assert b"#1" in response.data
