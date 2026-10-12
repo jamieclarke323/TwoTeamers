@@ -84,7 +84,10 @@ def _active_matchweek(quizzes):
 
 @bp.route("/")
 def home():
-    return render_template("home.html")
+    quiz = todays_featured_quiz()
+    if quiz is None:
+        return render_template("home.html")
+    return _render_quiz(quiz, is_home_game=True)
 
 
 @bp.route("/teams")
@@ -235,19 +238,18 @@ def featured_game():
     quiz = todays_featured_quiz()
     if quiz is None:
         flash("There's no featured fixture today. Check back tomorrow!", "info")
-        return redirect(url_for("main.home"))
-    return _render_quiz(quiz)
+    return redirect(url_for("main.home"))
 
 
 @bp.route("/quiz/<quiz_id>")
 def quiz_page(quiz_id):
     quiz = _quiz_or_404(quiz_id)
     if quiz.is_featured and quiz is todays_featured_quiz():
-        return redirect(url_for("main.featured_game"))
+        return redirect(url_for("main.home"))
     return _render_quiz(quiz)
 
 
-def _render_quiz(quiz):
+def _render_quiz(quiz, is_home_game: bool = False):
     if quiz.total_players == 0:
         return render_template("locked.html", quiz=quiz, status="no_answers", hide_featured_banner=True)
     status = _availability(quiz)
@@ -279,6 +281,7 @@ def _render_quiz(quiz):
         adsense_client_id=current_app.config["ADSENSE_CLIENT_ID"],
         adsense_test_mode=current_app.config["ADSENSE_TEST_MODE"],
         hide_featured_banner=True,
+        is_home_game=is_home_game,
     )
 
 

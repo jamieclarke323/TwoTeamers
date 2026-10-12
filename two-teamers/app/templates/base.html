@@ -12,11 +12,17 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
+    <div class="brand-nav-group">
+      <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
+      <nav class="header-nav" aria-label="Main navigation">
+        <a class="nav-button" href="{{ url_for('main.teams') }}">Pick a team</a>
+        <a class="nav-button" href="{{ url_for('main.leagues') }}">Pick a league</a>
+      </nav>
+    </div>
     {% if g.user %}<div class="account">{% if config.LEADERBOARD_ENABLED %}<a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a>{% endif %}<a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
   </header>
   {% if featured_fixture and not hide_featured_banner %}{% set featured = featured_fixture.quiz %}
-  <a class="featured-fixture" href="{{ url_for('main.featured_game') }}" aria-label="Play today's featured fixture: {{ featured.home_team }} vs {{ featured.away_team }}">
+  <a class="featured-fixture" href="{{ url_for('main.home') }}" aria-label="Play today's featured fixture: {{ featured.home_team }} vs {{ featured.away_team }}">
     <span class="featured-label">Today's featured fixture</span>
     <span class="featured-match">
       <span class="featured-team home">{% if featured_fixture.home_kit %}<img src="{{ url_for('static', filename='img/kits/' ~ featured_fixture.home_kit) }}" alt="">{% endif %}<strong>{{ featured.home_team }}</strong></span>

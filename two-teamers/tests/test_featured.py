@@ -65,25 +65,45 @@ def _make_today(app):
 
 def test_featured_banner_shows_on_non_game_pages_with_kits(client, app):
     _make_today(app)
-    for path in ("/", "/teams", "/leagues", "/login"):
+    for path in ("/teams", "/leagues", "/login"):
         page = client.get(path).data
         assert b'class="featured-fixture"' in page
-        assert b'href="/featured"' in page
+        assert b'href="/"' in page
         assert f"img/kits/{quote(BADGE_FILES['Charlton Athletic'])}".encode() in page
         assert f"img/kits/{quote(BADGE_FILES['Manchester United'])}".encode() in page
         assert b"Today&#39;s featured fixture" in page or b"Today's featured fixture" in page
         assert b"Wildcard" not in page
 
 
-def test_featured_game_uses_fixed_url_without_banner(client, app):
+def test_home_page_is_featured_game_without_banner(client, app):
     today = _make_today(app)
-    game = client.get("/featured")
+    game = client.get("/")
     assert game.status_code == 200
     assert b"Charlton Athletic" in game.data
     assert b'class="featured-fixture"' not in game.data
-    assert b"Back to home" in game.data
-    assert client.get(f"/quiz/{today.quiz_id}").headers["Location"].endswith("/featured")
+    assert client.get(f"/quiz/{today.quiz_id}").headers["Location"].endswith("/")
+    assert client.get("/featured").headers["Location"].endswith("/")
     assert client.post(f"/quiz/{today.quiz_id}/guess", json={"guess": today.players[0].name}).get_json()["status"] == "correct"
+
+
+def test_navbar_has_pick_team_and_pick_league_buttons(client):
+    page = client.get("/").data
+    assert b'class="header-nav"' in page
+    assert b'href="/teams"' in page
+    assert b"Pick a team" in page
+    assert b'href="/leagues"' in page
+    assert b"Pick a league" in page
+
+
+def test_quiz_page_has_how_to_play_and_clue_info_dialogs(client, app):
+    quiz = app.config["QUIZZES"][0]
+    page = client.get(f"/quiz/{quiz.quiz_id}").data
+    assert b'id="how-to-play-btn"' in page
+    assert b"Name the footballers who have played for both of the (men&#39;s) teams listed" in page or b"Name the footballers who have played for both of the (men's) teams listed" in page
+    assert b"If you&#39;re unsure of the spelling, click &#39;Guess&#39;" in page or b"If you're unsure of the spelling, click 'Guess'" in page
+    assert b"Please note that Apps/Goals stats may include U21 figures" in page
+    assert b'id="clue-info-btn"' in page
+    assert b'id="stats-info-dialog"' in page
 
 
 def test_regular_quiz_page_hides_banner(client, app):

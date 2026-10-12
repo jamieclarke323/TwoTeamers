@@ -136,5 +136,16 @@
   shareAgainButton.addEventListener("click", () => showSharePrompt(shareText, true));
   document.getElementById("reset").addEventListener("click", async () => { if (confirm("Clear your progress for this game?")) { await request("reset", {confirm: true}); location.reload(); } });
 
+  const howToPlayBtn = document.getElementById("how-to-play-btn");
+  const howToPlayDialog = document.getElementById("how-to-play-dialog");
+  howToPlayBtn?.addEventListener("click", () => howToPlayDialog?.showModal());
+
+  const clueInfoBtn = document.getElementById("clue-info-btn");
+  const statsInfoDialog = document.getElementById("stats-info-dialog");
+  clueInfoBtn?.addEventListener("click", (event) => {
+    event.preventDefault();
+    statsInfoDialog?.showModal();
+  });
+
   if (data.completed || data.givenUp) showSharePrompt(shareText);
 })();

@@ -166,7 +166,7 @@ def test_adsense_script_loads_only_with_client_id(client, app):
 def test_quiz_page_displays_player_season_cutoff(signed_in_client, app):
     quiz = next(quiz for quiz in app.config["QUIZZES"] if quiz.players)
     response = signed_in_client.get(f"/quiz/{quiz.quiz_id}")
-    assert b"Only players from 2000 onwards, excluding the most recent season, are valid for this game" in response.data
+    assert b"Only players who played for BOTH clubs from 2000 onwards are valid for this game" in response.data
 
 
 def test_quiz_script_labels_numeric_clues():
