@@ -34,6 +34,7 @@
   <form method="dialog">
     <p class="eyebrow">Full time</p>
     <h2>Share your results?</h2>
+    <p class="share-dialog-score" id="share-dialog-score"></p>
     <p>Copy your result to the clipboard and challenge your friends.</p>
     <div class="share-dialog-actions">
       <button class="button" type="button" id="copy-share-result">Share results</button>
@@ -70,7 +71,7 @@
     </div>
   </form>
 </dialog>
-<script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team, "completed": completed, "givenUp": given_up, "shareText": share_text, "adsEnabled": ads_enabled}|tojson }}</script>
+<script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team, "completed": completed, "givenUp": given_up, "shareText": share_text, "solvedCount": solved_count, "totalPlayers": quiz.total_players, "adsEnabled": ads_enabled}|tojson }}</script>
 {% if ads_enabled %}<script type="application/json" id="ads-config">{{ {"provider": "adsense" if adsense_client_id else "simulated"}|tojson }}</script>{% endif %}
 {% endblock %}
 {% block scripts %}{% if ads_enabled %}{% if adsense_client_id %}<script async {% if adsense_test_mode %}data-adbreak-test="on" {% endif %}src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ adsense_client_id|urlencode }}" crossorigin="anonymous"></script>{% endif %}<script src="{{ url_for('static', filename='js/ads.js') }}"></script>{% endif %}<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>{% endblock %}

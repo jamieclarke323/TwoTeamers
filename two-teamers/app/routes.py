@@ -332,7 +332,7 @@ def _share_result_text(quiz, state):
             f"TWO TEAMERS {len(solved)}/{quiz.total_players}",
             f"{quiz.home_team} vs {quiz.away_team}",
             " ".join(symbols),
-            "www.placeholderlink.com",
+            "twoteamers.com",
         )
     )
 

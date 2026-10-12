@@ -14,6 +14,8 @@
   let clueTarget = "all";
   let exactTimer;
   let shareText = data.shareText || "";
+  let currentSolved = Number(data.solvedCount || 0);
+  let totalCount = Number(data.totalPlayers || 0);
   const shareDismissedKey = `share-prompt-dismissed-${data.quizId}`;
 
   const request = async (path, body) => {
@@ -27,9 +29,29 @@
     element.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
   };
   const escapeHtml = (value) => { const element = document.createElement("span"); element.textContent = String(value); return element.innerHTML; };
-  const showSharePrompt = (text, force = false) => {
+  const updateShareScore = (solved, total) => {
+    const scoreEl = document.getElementById("share-dialog-score");
+    if (!scoreEl) return;
+    const s = solved ?? currentSolved;
+    const t = total ?? totalCount;
+    if (t > 0) {
+      scoreEl.textContent = `${s}/${t}, well done!`;
+    }
+  };
+  const showSharePrompt = (text, force = false, delayMs = 0) => {
     if (text) shareText = text;
-    if (shareText && (force || !sessionStorage.getItem(shareDismissedKey)) && !shareDialog.open) shareDialog.showModal();
+    updateShareScore();
+    const openModal = () => {
+      if (shareText && (force || !sessionStorage.getItem(shareDismissedKey)) && !shareDialog.open) {
+        updateShareScore();
+        shareDialog.showModal();
+      }
+    };
+    if (delayMs > 0 && !force) {
+      setTimeout(openModal, delayMs);
+    } else {
+      openModal();
+    }
   };
   const showClipboardToast = () => {
     clipboardToast.classList.add("visible");
@@ -66,6 +88,8 @@
   const applyGuess = (result) => {
     if (result.status === "correct") {
       fillCard(result.player); input.value = ""; document.getElementById("solved-count").textContent = result.solved_count;
+      currentSolved = Number(result.solved_count);
+      if (result.total) totalCount = Number(result.total);
       toast.classList.add("visible"); setTimeout(() => toast.classList.remove("visible"), 1700);
       feedback.textContent = "";
       if (result.completed) {
@@ -74,7 +98,7 @@
         document.getElementById("give-up").disabled = true;
         shareAgainButton.hidden = false;
         feedback.textContent = "You found every player.";
-        showSharePrompt(result.share_text);
+        showSharePrompt(result.share_text, false, 2000);
       }
     } else if (result.status !== "not_exact") { feedback.textContent = result.message || ""; feedback.className = `feedback ${result.status}`; }
   };
@@ -121,12 +145,14 @@
     if (!confirm("Reveal every answer and end this game?")) return;
     const result = await request("giveup", {confirm: true});
     result.players?.forEach(fillCard);
+    if (result.solved_count !== undefined) currentSolved = Number(result.solved_count);
+    if (result.total) totalCount = Number(result.total);
     input.disabled = true;
     form.querySelector("button").disabled = true;
     document.getElementById("all-clues").disabled = true;
     document.getElementById("give-up").disabled = true;
     shareAgainButton.hidden = false;
-    showSharePrompt(result.share_text);
+    showSharePrompt(result.share_text, false, 2000);
   });
   copyShareButton.addEventListener("click", copyShareResult);
   dismissShareButton.addEventListener("click", () => {

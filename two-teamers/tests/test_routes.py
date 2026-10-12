@@ -202,7 +202,7 @@ def test_share_result_uses_original_card_order_and_clue_count(signed_in_client, 
     assert lines[0] == f"TWO TEAMERS 2/{quiz.total_players}"
     assert lines[1] == f"{quiz.home_team} vs {quiz.away_team}"
     assert lines[2].split() == ["❌", "🟠", "🟡"] + ["❌"] * (quiz.total_players - 3)
-    assert lines[3] == "www.placeholderlink.com"
+    assert lines[3] == "twoteamers.com"
 
 
 def test_completing_game_returns_share_text_from_normal_guess_flow(signed_in_client, app):
@@ -216,7 +216,7 @@ def test_completing_game_returns_share_text_from_normal_guess_flow(signed_in_cli
         "TWO TEAMERS 1/1",
         f"{quiz.home_team} vs {quiz.away_team}",
         "🟢",
-        "www.placeholderlink.com",
+        "twoteamers.com",
     ]
     page = signed_in_client.get(f"/quiz/{quiz.quiz_id}")
     assert b'"completed": true' in page.data
@@ -228,10 +228,13 @@ def test_finished_quiz_shows_share_prompt_and_copy_toast_markup(signed_in_client
     response = signed_in_client.get(f"/quiz/{quiz.quiz_id}")
     assert response.status_code == 200
     assert b"share-dialog" in response.data
+    assert b"share-dialog-score" in response.data
     assert b"Share your results?" in response.data
     assert b"Copied to clipboard!" in response.data
     script = (PROJECT_ROOT / "app" / "static" / "js" / "quiz.js").read_text()
     assert "navigator.clipboard.writeText(shareText)" in script
+    assert "showSharePrompt(result.share_text, false, 2000)" in script
+    assert "well done!" in script
 
 
 def test_expired_quiz_is_locked(signed_in_client, app):
