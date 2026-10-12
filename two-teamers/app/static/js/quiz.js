@@ -89,7 +89,7 @@
     event.preventDefault(); const types = [...dialog.querySelectorAll(".clue-options input:checked")].map((item) => item.value); if (!types.length) return;
     const result = await request("clue", {types, index: clueTarget});
     if (result.status === "ad_required") { setCluesLocked(true); return; }
-    result.clues?.forEach((entry) => { const holder = card(entry.index).querySelector(".clue-holder"); holder.innerHTML = types.map((type) => `<span><strong>${clueLabels[type]}:</strong> ${escapeHtml(entry[type])}</span>`).join(""); });
+    result.clues?.forEach((entry) => { const holder = card(entry.index).querySelector(".clue-holder"); holder.innerHTML = Object.keys(clueLabels).filter((type) => type in entry).map((type) => `<span><strong>${clueLabels[type]}:</strong> ${escapeHtml(entry[type])}</span>`).join(""); });
     if (data.adsEnabled) setCluesLocked(true);
     dialog.close();
   });

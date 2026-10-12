@@ -7,7 +7,7 @@ from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, re
 
 from .auth import login_required
 from .badges import BADGE_FILES
-from .data_loader import FEATURED_UNLOCK, QUIZ_TIMEZONE, slugify
+from .data_loader import FEATURED_UNLOCK, QUIZ_TIMEZONE, _shared_players, slugify
 from .db import get_db, get_progress, progress_counts, save_progress
 from .leaderboard import calculate_standings, fan_standing
 from .matching import MatchResult, match_guess
@@ -153,7 +153,7 @@ def _leaderboard_page():
         }
     )
     standings, user_averages, users_by_team, scores_by_user = calculate_standings(
-        get_db(), quizzes, clubs, scoped_week
+        get_db(), [*quizzes, *current_app.config.get("FEATURED_QUIZZES", [])], clubs, scoped_week
     )
     personal = fan_standing(
         g.user["id"],
@@ -203,6 +203,33 @@ def league_fixtures(league_id):
     )
 
 
+@bp.route("/admin", methods=["GET"])
+@bp.route("/admin/matchup", methods=["GET"])
+def admin_matchup():
+    all_rosters = current_app.config.get("ALL_ROSTERS", {})
+    clubs = current_app.config.get("ALL_CLUBS", sorted(all_rosters.keys()))
+    team1 = request.args.get("team1", "").strip()
+    team2 = request.args.get("team2", "").strip()
+    players = []
+    searched = bool(team1 and team2)
+    same_team = False
+    if searched:
+        if team1 == team2:
+            same_team = True
+        else:
+            players = _shared_players(all_rosters, team1, team2)
+    return render_template(
+        "admin_matchup.html",
+        clubs=clubs,
+        team1=team1,
+        team2=team2,
+        players=players,
+        searched=searched,
+        same_team=same_team,
+        hide_featured_banner=True,
+    )
+
+
 @bp.route("/featured")
 def featured_game():
     quiz = todays_featured_quiz()
@@ -228,8 +255,13 @@ def _render_quiz(quiz):
         return render_template("locked.html", quiz=quiz, status=status, hide_featured_banner=True)
     state = get_progress(_progress_identity(), quiz.quiz_id)
     solved = set(state["solved"])
+    saved_clues = _answer_data(state)["clues"]
+    clue_labels = {"apps": "Apps", "goals": "Goals", "years": "Years", "initials": "Initials"}
     players = [
-        {"found": index in solved or state["given_up"], **(_public_player(quiz, player, index) if index in solved or state["given_up"] else {"index": index})}
+        {"found": index in solved or state["given_up"],
+         "clues": [(clue_labels[kind], player.clue_value(kind, quiz.home_team, quiz.away_team))
+                   for kind in saved_clues.get(str(index), []) if kind in clue_labels],
+         **(_public_player(quiz, player, index) if index in solved or state["given_up"] else {"index": index})}
         for index, player in enumerate(quiz.players)
     ]
     completed = len(solved) == quiz.total_players
@@ -394,7 +426,7 @@ def request_clue(quiz_id):
             if clue_type not in player_clues:
                 player_clues.append(clue_type)
         player = quiz.players[index]
-        clues.append({"index": index, **{kind: player.clue_value(kind, quiz.home_team, quiz.away_team) for kind in types}})
+        clues.append({"index": index, **{kind: player.clue_value(kind, quiz.home_team, quiz.away_team) for kind in player_clues}})
     save_progress(identity, quiz_id, state)
     return jsonify({"status": "ok", "clues": clues})
 

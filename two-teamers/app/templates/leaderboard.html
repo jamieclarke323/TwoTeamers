@@ -5,7 +5,7 @@
   <a class="back-link" href="{{ url_for('main.home') }}">Back</a>
   <p class="eyebrow">Supporters' table</p>
   <h1>Leaderboard</h1>
-  <p>Club points are the average score of supporters' games involving their team. Answers found after a clue do not count.</p>
+  <p>Club points average each supporter's scores across all games they play. Unplayed games do not count. Answers found after a clue do not count.</p>
 </section>
 
 <div class="leaderboard-controls">
@@ -35,7 +35,7 @@
     <div class="personal-score"><strong>#{{ personal.rank }}</strong><span>of {{ personal.total_ranked }} ranked fans</span></div>
     <div class="personal-score"><strong>{{ '%.1f'|format(personal.points) }}</strong><span>points · {{ personal.games_played }} games</span></div>
   {% else %}
-    <p>Play a {{ supported_team }} fixture to enter the ranking. Wildcard fixtures featured as a daily game will not be counted.</p>
+    <p>Play any game to enter your club's supporter ranking.</p>
   {% endif %}
 </section>
 

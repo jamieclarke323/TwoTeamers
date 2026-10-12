@@ -108,3 +108,41 @@ def test_players_are_ordered_by_surname(app):
 def test_no_banner_when_no_featured_fixture_today(client, app):
     app.config["FEATURED_QUIZZES"] = []
     assert b'class="featured-fixture"' not in client.get("/").data
+
+
+def test_champions_league_wildcard_available_in_featured_quizzes(app):
+    atletico_quiz = next(
+        (quiz for quiz in app.config["FEATURED_QUIZZES"]
+         if quiz.home_team == "Atletico Madrid" and quiz.away_team == "Manchester United"),
+        None,
+    )
+    assert atletico_quiz is not None
+    assert len(atletico_quiz.players) == 6
+
+
+def test_champions_league_teams_not_on_home_or_teams_page(client):
+    home = client.get("/").data
+    assert b"Real Madrid" not in home
+    assert b"Champions League" not in home
+
+    teams = client.get("/teams").data
+    assert b"Real Madrid" not in teams
+    assert b"Atletico Madrid" not in teams
+
+
+def test_admin_matchup_screen_generates_all_answers(client):
+    response = client.get("/admin?team1=Charlton+Athletic&team2=Portsmouth")
+    assert response.status_code == 200
+    assert b"41" in response.data
+    assert b"player" in response.data
+    assert b"Paul Benson" in response.data
+    assert b"Charlton Athletic: 2010-2011" in response.data
+    assert b"Portsmouth: 2012" in response.data
+
+
+def test_admin_screen_not_linked_in_navbar_or_home(client):
+    home = client.get("/").data
+    assert b'href="/admin"' not in home
+    assert b'href="/admin/matchup"' not in home
+    teams = client.get("/teams").data
+    assert b'href="/admin"' not in teams

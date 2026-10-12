@@ -56,6 +56,7 @@ CLUB_ALIASES = {
 FEATURED_WORKBOOK = "Featured fixtures.xlsx"
 FEATURED_SHEET = "Featured fixture list"
 FEATURED_LEAGUE_ID = "featured"
+CHAMPIONS_LEAGUE_WORKBOOK = "Two Teamers - Champions League.xlsx"
 FEATURED_CLUB_ALIASES = {
     "Ason Villa": "Aston Villa",
     "Bolton": "Bolton Wanderers",
@@ -120,7 +121,12 @@ class QuizPlayer:
     def __post_init__(self) -> None:
         parts = self.name.split()
         self.surname = parts[-1] if parts else self.name
-        self.acceptable_answers = list(dict.fromkeys([self.name, self.surname]))
+        candidates = [self.name]
+        if len(parts) >= 3:
+            candidates.append(" ".join(parts[-2:]))
+        if self.surname:
+            candidates.append(self.surname)
+        self.acceptable_answers = list(dict.fromkeys(candidates))
         self.initials = "".join(f"{part[0].upper()}." for part in parts if part)
 
     def clue_value(self, clue_type: str, home_team: str, away_team: str) -> str:
@@ -351,14 +357,25 @@ def load_featured_quizzes(xlsx_path: str | Path, rosters, known_clubs: set[str])
     return quizzes
 
 
+def load_champions_league_rosters(xlsx_path: str | Path) -> dict[str, dict[str, ClubPlayer]]:
+    path = Path(xlsx_path)
+    if not path.is_file():
+        return {}
+    workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    clubs = {name for name in workbook.sheetnames if not name.endswith("Stats") and name != "TeamIDs"}
+    return load_club_players(path, clubs)
+
+
 def load_quizzes(data_dir: str | Path, _legacy_xlsx_path: str | Path | None = None) -> tuple[list[League], list[Quiz]]:
-    leagues, quizzes, _featured = load_game_data(data_dir)
+    leagues, quizzes, *_ = load_game_data(data_dir)
     return leagues, quizzes
 
 
 def load_game_data(
-    data_dir: str | Path, featured_path: str | Path | None = None
-) -> tuple[list[League], list[Quiz], list[Quiz]]:
+    data_dir: str | Path,
+    featured_path: str | Path | None = None,
+    cl_path: str | Path | None = None,
+) -> tuple[list[League], list[Quiz], list[Quiz], dict[str, dict[str, ClubPlayer]]]:
     data_dir = Path(data_dir)
     clubs_by_league = load_all_clubs(data_dir)
 
@@ -393,6 +410,10 @@ def load_game_data(
         League(league_id, LEAGUE_NAMES[league_id], tuple(clubs_by_league[league_id]), league_id in PLAYER_WORKBOOKS)
         for league_id in LEAGUE_FILES
     ]
-    known_clubs = {club for clubs in clubs_by_league.values() for club in clubs}
+    cl_file = Path(cl_path) if cl_path else data_dir / CHAMPIONS_LEAGUE_WORKBOOK
+    cl_rosters = load_champions_league_rosters(cl_file)
+    all_rosters.update(cl_rosters)
+
+    known_clubs = {club for clubs in clubs_by_league.values() for club in clubs} | set(cl_rosters.keys())
     featured = load_featured_quizzes(featured_path, all_rosters, known_clubs) if featured_path else []
-    return leagues, quizzes, featured
+    return leagues, quizzes, featured, all_rosters

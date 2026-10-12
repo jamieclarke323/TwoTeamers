@@ -37,8 +37,6 @@ def _score_rows(db, quizzes_by_id, matchweek: int | None):
         if quiz is None:
             continue
         team = row["supported_team"]
-        if team not in (quiz.home_team, quiz.away_team):
-            continue
         if matchweek is not None and quiz.matchweek != matchweek:
             continue
         yield row["user_id"], team, 100 * row["score_correct"] / row["score_total"]

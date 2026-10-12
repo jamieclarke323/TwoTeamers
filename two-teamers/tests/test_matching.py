@@ -28,3 +28,18 @@ def test_fuzzy_correct_is_distinct_from_exact_for_auto_submit():
 def test_initials_are_derived_from_each_name_part():
     assert player("Jóhann Berg Guðmundsson").initials == "J.B.G."
     assert player("Patrick van Aanholt").initials == "P.V.A."
+
+
+def test_three_part_names_allow_guessing_final_two_names():
+    p = player("Patrick van Aanholt")
+    assert "van Aanholt" in p.acceptable_answers
+    assert match_guess("van Aanholt", [p], set()).result == MatchResult.EXACT
+    assert match_guess("Aanholt", [p], set()).result == MatchResult.EXACT
+    assert match_guess("Patrick van Aanholt", [p], set()).result == MatchResult.EXACT
+
+
+def test_three_part_names_support_fuzzy_on_final_two_names():
+    p = player("Patrick van Aanholt")
+    # "van Aanhold" vs "van Aanholt" -> 1 typo across 11 chars = ~91% ratio >= 90%
+    outcome = match_guess("van Aanhold", [p], set())
+    assert outcome.result == MatchResult.CORRECT

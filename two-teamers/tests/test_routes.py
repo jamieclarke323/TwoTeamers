@@ -8,6 +8,19 @@ from app.db import get_progress
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_revealed_clues_accumulate_and_survive_reload(client, app):
+    quiz = app.config["QUIZZES"][0]
+    url = f"/quiz/{quiz.quiz_id}"
+    client.post(f"{url}/clue", json={"types": ["initials"], "index": 0})
+    response = client.post(f"{url}/clue", json={"types": ["apps"], "index": 0})
+    clue = response.get_json()["clues"][0]
+    assert clue["initials"] == quiz.players[0].initials
+    assert "apps" in clue
+    page = client.get(url).data
+    assert f"<strong>Initials:</strong> {quiz.players[0].initials}".encode() in page
+    assert b"<strong>Apps:</strong>" in page
+
+
 def test_visitors_are_sent_to_login(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -48,7 +61,7 @@ def test_team_picker_contains_all_92_clubs(signed_in_client):
 
 def test_every_configured_badge_asset_exists():
     badge_directory = PROJECT_ROOT / "app" / "static" / "img" / "kits"
-    assert len(BADGE_FILES) == 92
+    assert len(BADGE_FILES) == 107
     assert all((badge_directory / filename).is_file() for filename in BADGE_FILES.values())
 
 

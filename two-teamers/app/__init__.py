@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from .data_loader import FEATURED_WORKBOOK, load_game_data
+from .data_loader import CHAMPIONS_LEAGUE_WORKBOOK, FEATURED_WORKBOOK, load_game_data
 from .db import close_db, init_db
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -40,15 +40,28 @@ def create_app(test_config: dict | None = None) -> Flask:
         "FEATURED_XLSX_PATH",
         os.environ.get("FEATURED_XLSX_PATH", str(Path(app.config["DATA_DIR"]) / FEATURED_WORKBOOK)),
     )
+    app.config.setdefault(
+        "CHAMPIONS_LEAGUE_XLSX_PATH",
+        os.environ.get(
+            "CHAMPIONS_LEAGUE_XLSX_PATH",
+            str(Path(app.config["DATA_DIR"]) / CHAMPIONS_LEAGUE_WORKBOOK),
+        ),
+    )
 
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     init_db(app)
-    leagues, quizzes, featured = load_game_data(app.config["DATA_DIR"], app.config["FEATURED_XLSX_PATH"])
+    leagues, quizzes, featured, all_rosters = load_game_data(
+        app.config["DATA_DIR"],
+        app.config["FEATURED_XLSX_PATH"],
+        app.config["CHAMPIONS_LEAGUE_XLSX_PATH"],
+    )
     app.config["LEAGUES"] = leagues
     app.config["LEAGUES_BY_ID"] = {league.league_id: league for league in leagues}
     app.config["QUIZZES"] = quizzes
     app.config["FEATURED_QUIZZES"] = featured
     app.config["QUIZZES_BY_ID"] = {quiz.quiz_id: quiz for quiz in [*quizzes, *featured]}
+    app.config["ALL_ROSTERS"] = all_rosters
+    app.config["ALL_CLUBS"] = sorted(all_rosters.keys())
 
     from .auth import bp as auth_bp
     from .routes import bp as main_bp

@@ -147,7 +147,7 @@ def test_reset_freezes_started_leaderboard_score(signed_in_client, app):
         assert state["score_frozen"] is True
 
 
-def test_team_points_average_fan_scores_and_ignore_unrelated_fixtures(app):
+def test_team_points_average_fan_scores_across_all_played_fixtures(app):
     arsenal_quizzes = [
         quiz
         for quiz in app.config["QUIZZES"]
@@ -171,9 +171,9 @@ def test_team_points_average_fan_scores_and_ignore_unrelated_fixtures(app):
         )
         arsenal = next(row for row in standings if row.team == "Arsenal")
         assert len(standings) == 92
-        assert arsenal.points == 70.0
+        assert arsenal.points == 75.0
         assert arsenal.scoring_supporters == 2
-        assert arsenal.games_played == 2
+        assert arsenal.games_played == 3
         assert fan_standing(first, "Arsenal", user_averages, users_by_team, scores_by_user).rank == 1
         assert fan_standing(second, "Arsenal", user_averages, users_by_team, scores_by_user).rank == 2
 

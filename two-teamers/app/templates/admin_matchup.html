@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Admin Matchup Answers | Two Teamers{% endblock %}
+{% block content %}
+<section class="page-head">
+  <p class="eyebrow">Admin Tool</p>
+  <h1>Matchup Answer Generator</h1>
+  <p>Select any two clubs to view every valid Two Teamers crossover player and their stats.</p>
+</section>
+
+<form class="admin-picker-form" method="get" action="{{ url_for('main.admin_matchup') }}">
+  <div class="admin-select-row">
+    <div class="admin-select-group">
+      <label for="team1">Team 1</label>
+      <select id="team1" name="team1" required>
+        <option value="" disabled {% if not team1 %}selected{% endif %}>Select first club...</option>
+        {% for club in clubs %}
+        <option value="{{ club }}" {% if team1 == club %}selected{% endif %}>{{ club }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <span class="admin-vs">vs</span>
+    <div class="admin-select-group">
+      <label for="team2">Team 2</label>
+      <select id="team2" name="team2" required>
+        <option value="" disabled {% if not team2 %}selected{% endif %}>Select second club...</option>
+        {% for club in clubs %}
+        <option value="{{ club }}" {% if team2 == club %}selected{% endif %}>{{ club }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <button class="button" type="submit">Show answers</button>
+</form>
+
+{% if searched %}
+  {% if same_team %}
+    <p class="feedback wrong" style="margin-top:20px;">Please choose two different clubs to view shared players.</p>
+  {% else %}
+    <section class="admin-results-section">
+      <div class="admin-results-head">
+        <h2>{{ team1 }} <span>vs</span> {{ team2 }}</h2>
+        <div class="score"><strong>{{ players|length }}</strong><span> player{{ 's' if players|length != 1 else '' }} found</span></div>
+      </div>
+      {% if players %}
+      <div class="player-grid">
+        {% for player in players %}
+        <div class="player-card found">
+          <span class="card-number">{{ loop.index }}</span>
+          <strong>{{ player.name }}</strong>
+          <span>{{ team1 }}: {{ player.home.years }} · {{ player.home.apps }} apps · {{ player.home.goals }} goals</span>
+          <span>{{ team2 }}: {{ player.away.years }} · {{ player.away.apps }} apps · {{ player.away.goals }} goals</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="feedback wrong" style="margin-top:20px;">No shared players found between {{ team1 }} and {{ team2 }} who played for both clubs from 2000 onwards.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% else %}
+<div class="empty-state"><strong>Choose two clubs above to generate all valid answers.</strong></div>
+{% endif %}
+{% endblock %}
