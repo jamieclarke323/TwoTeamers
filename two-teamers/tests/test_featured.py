@@ -87,9 +87,11 @@ def test_home_page_links_to_featured_game_without_banner(client, app):
     assert client.post(f"/quiz/{today.quiz_id}/guess", json={"guess": today.players[0].name}).get_json()["status"] == "correct"
 
 
-def test_navbar_has_pick_team_and_pick_league_buttons(client):
+def test_pickers_are_on_home_page_but_not_navbar(client):
     page = client.get("/").data
-    assert b'class="header-nav"' in page
+    header = page.split(b'<header class="site-header">', 1)[1].split(b'</header>', 1)[0]
+    assert b"Pick a team" not in header
+    assert b"Pick a league" not in header
     assert b'href="/teams"' in page
     assert b"Pick a team" in page
     assert b'href="/leagues"' in page
