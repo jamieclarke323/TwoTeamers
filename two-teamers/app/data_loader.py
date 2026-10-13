@@ -241,8 +241,17 @@ def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
                 goals=clean_value(row[4]),
             )
         )
-    unique = {key: values[0] for key, values in records.items() if len(values) == 1}
-    ambiguous = {key for key, values in records.items() if len(values) > 1}
+    unique = {}
+    ambiguous = set()
+    for key, values in records.items():
+        if len(values) == 1:
+            unique[key] = values[0]
+            continue
+        eligible = [record for record in values if _played_in_eligible_season(record.years)]
+        if len(eligible) == 1:
+            unique[key] = eligible[0]
+        else:
+            ambiguous.add(key)
     return unique, ambiguous
 
 
