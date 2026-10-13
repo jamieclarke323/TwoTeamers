@@ -1,10 +1,38 @@
 {% extends "base.html" %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">{% endblock %}
+{% macro matchup(quiz) %}
+<div class="home-matchup">
+  <div class="home-match-team">{% if quiz.home_team in badge_files %}<img src="{{ url_for('static', filename='img/kits/' ~ badge_files[quiz.home_team]) }}" alt="{{ quiz.home_team }} home kit">{% endif %}<strong>{{ quiz.home_team }}</strong></div>
+  <span class="home-match-vs">vs</span>
+  <div class="home-match-team">{% if quiz.away_team in badge_files %}<img src="{{ url_for('static', filename='img/kits/' ~ badge_files[quiz.away_team]) }}" alt="{{ quiz.away_team }} home kit">{% endif %}<strong>{{ quiz.away_team }}</strong></div>
+</div>
+{% endmacro %}
 {% block content %}
-<section class="home-stage">
-	<div class="home-intro"><p class="eyebrow">The football crossover quiz</p><h1>Two clubs.<br><span>One player.</span></h1><p>Pick your route, choose a fixture, and name every player who represented both sides.</p></div>
-	<div class="choice-grid">
-		<a class="choice-panel" href="{{ url_for('main.teams') }}"><span class="choice-number">01</span><h2>Pick a team</h2><p>Browse all 92 clubs across England's top four divisions.</p><span class="choice-action">Choose your club</span></a>
-		<a class="choice-panel" href="{{ url_for('main.leagues') }}"><span class="choice-number">02</span><h2>Pick a league</h2><p>Start with the current matchweek and choose a fixture.</p><span class="choice-action">Choose your league</span></a>
-	</div>
+<section class="home-dashboard">
+  <div class="home-panel-grid">
+    {% if daily_quiz %}
+    <a class="home-panel featured-home-panel" href="{{ url_for('main.featured_game') }}">
+      <h2>Today's featured fixture</h2>{{ matchup(daily_quiz) }}<span class="choice-action">Play today's game &rarr;</span>
+    </a>
+    {% else %}
+    <div class="home-panel featured-home-panel"><h2>Today's featured fixture</h2><p>No featured fixture today. Check back tomorrow!</p></div>
+    {% endif %}
+    {% if not g.user %}
+    <button type="button" class="home-panel your-team-panel guest-team-panel" id="guest-your-team" aria-describedby="home-login-toast">
+      <h2>Your Team</h2><p>Log in to find your team's game.</p><span class="choice-action">Your fixture, ready when you are</span>
+    </button>
+    {% elif team_quiz %}
+    <a class="home-panel your-team-panel" href="{{ url_for('main.quiz_page', quiz_id=team_quiz.quiz_id) }}">
+      <h2>Your Team</h2>{{ matchup(team_quiz) }}
+      {% if team_status == 'playable' %}<span class="choice-action">Play your team's game &rarr;</span>{% else %}<span class="choice-action">Opens {{ team_quiz.unlock_at.strftime('%d %B %Y at %H:%M') }} (UK time)</span>{% endif %}
+    </a>
+    {% else %}
+    <a class="home-panel your-team-panel" href="{{ url_for('auth.profile') }}"><h2>Your Team</h2><p>{{ 'Choose your supported team in your profile.' if g.user.supported_team == 'Neutral' else 'No upcoming fixtures for your team.' }}</p><span class="choice-action">View profile &rarr;</span></a>
+    {% endif %}
+    <a class="home-panel browse-home-panel" href="{{ url_for('main.teams') }}"><h2>Pick a team</h2><p>Browse England's 92 clubs.</p><span class="choice-action">Choose your club &rarr;</span></a>
+    <a class="home-panel browse-home-panel" href="{{ url_for('main.leagues') }}"><h2>Pick a league</h2><p>Explore this week's fixtures.</p><span class="choice-action">Choose your league &rarr;</span></a>
+  </div>
 </section>
+<div class="toast" id="home-login-toast" role="status" aria-live="polite">log in to use this button</div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/home.js') }}"></script>{% endblock %}

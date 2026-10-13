@@ -84,10 +84,25 @@ def _active_matchweek(quizzes):
 
 @bp.route("/")
 def home():
-    quiz = todays_featured_quiz()
-    if quiz is None:
-        return render_template("home.html")
-    return _render_quiz(quiz, is_home_game=True)
+    team_quiz = None
+    team_status = None
+    if g.user is not None:
+        fixtures = sorted(
+            (quiz for quiz in current_app.config["QUIZZES"]
+             if g.user["supported_team"] in (quiz.home_team, quiz.away_team)),
+            key=lambda quiz: quiz.fixture_date,
+        )
+        team_quiz = next(
+            (quiz for quiz in fixtures if quiz.total_players and _availability(quiz) == "playable"), None,
+        )
+        if team_quiz is None:
+            team_quiz = next((quiz for quiz in fixtures if _availability(quiz) == "upcoming"), None)
+        if team_quiz is not None:
+            team_status = _availability(team_quiz)
+    return render_template(
+        "home.html", daily_quiz=todays_featured_quiz(), team_quiz=team_quiz,
+        team_status=team_status, badge_files=BADGE_FILES, hide_featured_banner=True,
+    )
 
 
 @bp.route("/teams")
@@ -238,14 +253,15 @@ def featured_game():
     quiz = todays_featured_quiz()
     if quiz is None:
         flash("There's no featured fixture today. Check back tomorrow!", "info")
-    return redirect(url_for("main.home"))
+        return redirect(url_for("main.home"))
+    return _render_quiz(quiz)
 
 
 @bp.route("/quiz/<quiz_id>")
 def quiz_page(quiz_id):
     quiz = _quiz_or_404(quiz_id)
     if quiz.is_featured and quiz is todays_featured_quiz():
-        return redirect(url_for("main.home"))
+        return redirect(url_for("main.featured_game"))
     return _render_quiz(quiz)
 
 

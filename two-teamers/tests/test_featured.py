@@ -68,21 +68,22 @@ def test_featured_banner_shows_on_non_game_pages_with_kits(client, app):
     for path in ("/teams", "/leagues", "/login"):
         page = client.get(path).data
         assert b'class="featured-fixture"' in page
-        assert b'href="/"' in page
+        assert b'href="/featured"' in page
         assert f"img/kits/{quote(BADGE_FILES['Charlton Athletic'])}".encode() in page
         assert f"img/kits/{quote(BADGE_FILES['Manchester United'])}".encode() in page
         assert b"Today&#39;s featured fixture" in page or b"Today's featured fixture" in page
         assert b"Wildcard" not in page
 
 
-def test_home_page_is_featured_game_without_banner(client, app):
+def test_home_page_links_to_featured_game_without_banner(client, app):
     today = _make_today(app)
     game = client.get("/")
     assert game.status_code == 200
     assert b"Charlton Athletic" in game.data
     assert b'class="featured-fixture"' not in game.data
-    assert client.get(f"/quiz/{today.quiz_id}").headers["Location"].endswith("/")
-    assert client.get("/featured").headers["Location"].endswith("/")
+    assert b'class="home-panel featured-home-panel" href="/featured"' in game.data
+    assert client.get(f"/quiz/{today.quiz_id}").headers["Location"].endswith("/featured")
+    assert client.get("/featured").status_code == 200
     assert client.post(f"/quiz/{today.quiz_id}/guess", json={"guess": today.players[0].name}).get_json()["status"] == "correct"
 
 
@@ -142,12 +143,12 @@ def test_champions_league_wildcard_available_in_featured_quizzes(app):
 
 def test_champions_league_teams_not_on_home_or_teams_page(client):
     home = client.get("/").data
-    assert b"Real Madrid" not in home
+    assert b'data-club="Real Madrid"' not in home
     assert b"Champions League" not in home
 
     teams = client.get("/teams").data
-    assert b"Real Madrid" not in teams
-    assert b"Atletico Madrid" not in teams
+    assert b'data-club="Real Madrid"' not in teams
+    assert b'data-club="Atletico Madrid"' not in teams
 
 
 def test_admin_matchup_screen_generates_all_answers(client):
