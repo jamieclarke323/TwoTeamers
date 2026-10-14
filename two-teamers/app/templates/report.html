@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Report an error | Two Teamers{% endblock %}
+{% block content %}
+<section class="auth-shell">
+  <div class="auth-panel">
+    <a class="back-link" href="{{ url_for('main.home') }}">Back to home</a>
+    <p class="eyebrow">Spotted an error?</p>
+    <h1>Report it</h1>
+    <form class="auth-form" method="get" action="{{ url_for('main.send_report') }}">
+      <label for="report-type">Type of error
+        <select id="report-type" name="type" required>
+          <option value="" disabled selected>Choose an option...</option>
+          {% for option in report_types %}<option value="{{ option }}">{{ option }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="button" type="submit">Next</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

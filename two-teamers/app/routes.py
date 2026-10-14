@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from urllib.parse import quote
 from uuid import uuid4
 
 from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, session, url_for
@@ -246,6 +247,29 @@ def admin_matchup():
         same_team=same_team,
         hide_featured_banner=True,
     )
+
+
+SUPPORT_EMAIL = "twoteamerssupport@gmail.com"
+REPORT_TYPES = (
+    "App functionality",
+    "Stats error",
+    "Valid answer not listed/Invalid answer listed",
+    "Other",
+)
+
+
+@bp.route("/report")
+def report_bug():
+    return render_template("report.html", report_types=REPORT_TYPES)
+
+
+@bp.route("/report/send")
+def send_report():
+    report_type = request.args.get("type", "")
+    if report_type not in REPORT_TYPES:
+        flash("Please choose a type of error.", "error")
+        return redirect(url_for("main.report_bug"))
+    return redirect(f"mailto:{SUPPORT_EMAIL}?subject={quote(report_type)}")
 
 
 @bp.route("/featured")
