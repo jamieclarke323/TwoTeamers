@@ -102,6 +102,7 @@ BADGE_FILES = {
     "Napoli": "Napoli.png",
     "Porto": "Porto.png",
     "PSV": "PSV.png",
+    "PSG": "PSG.png",
     "Real Madrid": "Real Madrid.png",
     "Roma": "Roma.png",
     "Sporting CP": "Sporting CP.png",

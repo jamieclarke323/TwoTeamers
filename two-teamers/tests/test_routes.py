@@ -65,8 +65,9 @@ def test_team_picker_contains_all_92_clubs(signed_in_client):
 
 def test_every_configured_badge_asset_exists():
     badge_directory = PROJECT_ROOT / "app" / "static" / "img" / "kits"
-    assert len(BADGE_FILES) == 107
+    assert len(BADGE_FILES) == 108
     assert all((badge_directory / filename).is_file() for filename in BADGE_FILES.values())
+    assert BADGE_FILES["PSG"] == "PSG.png"
 
 
 def test_team_search_hidden_attribute_hides_explicitly_flex_tiles():
