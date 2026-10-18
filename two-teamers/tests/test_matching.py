@@ -43,6 +43,13 @@ def test_nationality_clue_uses_flags_and_requires_both_club_values():
     assert nationality_flag("A country not mapped") == "A country not mapped"
 
 
+def test_nationality_flags_use_complete_subdivision_sequences_and_text_fallback():
+    assert nationality_flag("England") == "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f"
+    assert nationality_flag("Scotland") == "\U0001f3f4\U000e0067\U000e0062\U000e0073\U000e0063\U000e0074\U000e007f"
+    assert nationality_flag("Wales") == "\U0001f3f4\U000e0067\U000e0062\U000e0077\U000e006c\U000e0073\U000e007f"
+    assert nationality_flag("Kosovo") == "Kosovo"
+
+
 def test_three_part_names_allow_guessing_final_two_names():
     p = player("Patrick van Aanholt")
     assert "van Aanholt" in p.acceptable_answers

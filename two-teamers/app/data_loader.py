@@ -118,7 +118,7 @@ _NATIONALITY_FLAG_CODES = {
     "Iceland": "IS", "Indonesia": "ID", "Iran": "IR", "Iraq": "IQ",
     "Ireland": "IE", "Republic of Ireland": "IE", "Israel": "IL", "Italy": "IT",
     "Ivory Coast": "CI", "Jamaica": "JM", "Japan": "JP", "Jersey": "JE",
-    "Kenya": "KE", "Kosovo": "XK", "Latvia": "LV", "Liberia": "LR",
+    "Kenya": "KE", "Latvia": "LV", "Liberia": "LR",
     "Lithuania": "LT", "Mali": "ML", "Malta": "MT", "Martinique": "MQ",
     "Mauritania": "MR", "Mauritius": "MU", "Mexico": "MX", "Montserrat": "MS",
     "Morocco": "MA", "Netherlands": "NL", "New Zealand": "NZ", "Nigeria": "NG",
@@ -133,7 +133,7 @@ _NATIONALITY_FLAG_CODES = {
     "Venezuela": "VE", "Zambia": "ZM", "Zimbabwe": "ZW",
 }
 _UK_NATIONALITY_FLAGS = {
-    "England": "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e007f",
+    "England": "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f",
     "Scotland": "\U0001f3f4\U000e0067\U000e0062\U000e0073\U000e0063\U000e0074\U000e007f",
     "Wales": "\U0001f3f4\U000e0067\U000e0062\U000e0077\U000e006c\U000e0073\U000e007f",
 }
