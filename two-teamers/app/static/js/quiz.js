@@ -10,7 +10,7 @@
   const dismissShareButton = document.getElementById("dismiss-share-result");
   const shareAgainButton = document.getElementById("share-results");
   const clipboardToast = document.getElementById("clipboard-toast");
-  const clueLabels = {apps: "Apps", goals: "Goals", years: "Years", initials: "Initials"};
+  const clueLabels = {apps: "Apps", goals: "Goals", years: "Years", initials: "Initials", nationality: "Nationality"};
   let clueTarget = "all";
   let exactTimer;
   let shareText = data.shareText || "";
@@ -107,8 +107,16 @@
     exactTimer = setTimeout(async () => { const result = await request("exact", {guess}); if (input.value.trim() === guess) applyGuess(result); }, 250);
   });
   form.addEventListener("submit", async (event) => { event.preventDefault(); const guess = input.value.trim(); if (guess) applyGuess(await request("guess", {guess})); });
-  document.getElementById("player-grid").addEventListener("click", (event) => { const target = event.target.closest(".player-card:not(.found)"); if (target) { clueTarget = Number(target.dataset.index); dialog.showModal(); } });
-  document.getElementById("all-clues").addEventListener("click", () => { clueTarget = "all"; dialog.showModal(); });
+  const updateNationalityOption = () => {
+    const option = document.getElementById("nationality-clue-option");
+    if (!option) return;
+    const available = data.nationalityPlayerIndices || [];
+    option.hidden = clueTarget === "all"
+      ? !available.some((index) => !card(index)?.classList.contains("found"))
+      : !available.includes(clueTarget);
+  };
+  document.getElementById("player-grid").addEventListener("click", (event) => { const target = event.target.closest(".player-card:not(.found)"); if (target) { clueTarget = Number(target.dataset.index); updateNationalityOption(); dialog.showModal(); } });
+  document.getElementById("all-clues").addEventListener("click", () => { clueTarget = "all"; updateNationalityOption(); dialog.showModal(); });
   document.getElementById("show-clues").addEventListener("click", async (event) => {
     event.preventDefault(); const types = [...dialog.querySelectorAll(".clue-options input:checked")].map((item) => item.value); if (!types.length) return;
     const result = await request("clue", {types, index: clueTarget});

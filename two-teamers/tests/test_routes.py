@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.badges import BADGE_FILES
-from app.data_loader import QUIZ_TIMEZONE
+from app.data_loader import ClubPlayer, QUIZ_TIMEZONE, QuizPlayer
 from app.db import get_progress
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -125,6 +125,44 @@ def test_clue_endpoint_returns_derived_initials(signed_in_client, app):
     ]
 
 
+def test_nationality_clue_returns_flag_when_both_team_values_exist(client, app):
+    quiz = app.config["QUIZZES"][0]
+    quiz.players = [
+        QuizPlayer(
+            "Test Player",
+            ClubPlayer("Test Player", "2020", 1, 0, "France"),
+            ClubPlayer("Test Player", "2021", 2, 1, "France"),
+        )
+    ]
+
+    page = client.get(f"/quiz/{quiz.quiz_id}")
+    assert b'value="nationality"' in page.data
+    response = client.post(
+        f"/quiz/{quiz.quiz_id}/clue",
+        json={"types": ["nationality"], "index": 0},
+    )
+    assert response.get_json()["clues"] == [{"index": 0, "nationality": "🇫🇷"}]
+
+
+def test_nationality_clue_is_not_offered_or_returned_when_either_value_missing(client, app):
+    quiz = app.config["QUIZZES"][0]
+    quiz.players = [
+        QuizPlayer(
+            "Test Player",
+            ClubPlayer("Test Player", "2020", 1, 0, "France"),
+            ClubPlayer("Test Player", "2021", 2, 1),
+        )
+    ]
+
+    page = client.get(f"/quiz/{quiz.quiz_id}")
+    assert b'<label id="nationality-clue-option" hidden>' in page.data
+    response = client.post(
+        f"/quiz/{quiz.quiz_id}/clue",
+        json={"types": ["nationality"], "index": 0},
+    )
+    assert response.status_code == 400
+
+
 def test_quiz_page_offers_initials_clue(signed_in_client, app):
     quiz = app.config["QUIZZES"][0]
     response = signed_in_client.get(f"/quiz/{quiz.quiz_id}")
@@ -180,6 +218,7 @@ def test_quiz_script_labels_numeric_clues():
     assert 'apps: "Apps"' in script
     assert 'goals: "Goals"' in script
     assert 'initials: "Initials"' in script
+    assert 'nationality: "Nationality"' in script
 
 
 def test_share_result_uses_original_card_order_and_clue_count(signed_in_client, app):

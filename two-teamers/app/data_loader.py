@@ -101,12 +101,61 @@ def clean_value(value) -> str | int:
     return value
 
 
+_NATIONALITY_FLAG_CODES = {
+    "Albania": "AL", "Algeria": "DZ", "Angola": "AO", "Argentina": "AR",
+    "Armenia": "AM", "Australia": "AU", "Austria": "AT", "Barbados": "BB",
+    "Belarus": "BY", "Belgium": "BE", "Benin": "BJ", "Bermuda": "BM",
+    "Bosnia and Herzegovina": "BA", "Brazil": "BR", "Bulgaria": "BG",
+    "Burkina Faso": "BF", "Burundi": "BI", "Cameroon": "CM", "Canada": "CA",
+    "Chile": "CL", "China": "CN", "Colombia": "CO", "Costa Rica": "CR",
+    "Croatia": "HR", "Curaçao": "CW", "Cyprus": "CY", "Czech Republic": "CZ",
+    "DR Congo": "CD", "Democratic Republic of the Congo": "CD", "Denmark": "DK",
+    "Ecuador": "EC", "Egypt": "EG", "Equatorial Guinea": "GQ", "Estonia": "EE",
+    "Faroe Islands": "FO", "Finland": "FI", "France": "FR", "Gabon": "GA",
+    "Gambia": "GM", "Georgia": "GE", "Germany": "DE", "Ghana": "GH",
+    "Greece": "GR", "Grenada": "GD", "Guinea": "GN", "Guinea-Bissau": "GW",
+    "Guyana": "GY", "Haiti": "HT", "Honduras": "HN", "Hungary": "HU",
+    "Iceland": "IS", "Indonesia": "ID", "Iran": "IR", "Iraq": "IQ",
+    "Ireland": "IE", "Republic of Ireland": "IE", "Israel": "IL", "Italy": "IT",
+    "Ivory Coast": "CI", "Jamaica": "JM", "Japan": "JP", "Jersey": "JE",
+    "Kenya": "KE", "Kosovo": "XK", "Latvia": "LV", "Liberia": "LR",
+    "Lithuania": "LT", "Mali": "ML", "Malta": "MT", "Martinique": "MQ",
+    "Mauritania": "MR", "Mauritius": "MU", "Mexico": "MX", "Montserrat": "MS",
+    "Morocco": "MA", "Netherlands": "NL", "New Zealand": "NZ", "Nigeria": "NG",
+    "Norway": "NO", "Oman": "OM", "Pakistan": "PK", "Paraguay": "PY",
+    "Peru": "PE", "Poland": "PL", "Portugal": "PT", "Republic of the Congo": "CG",
+    "Romania": "RO", "Russia": "RU", "Saint Kitts and Nevis": "KN",
+    "Saint Lucia": "LC", "Senegal": "SN", "Serbia": "RS", "Sierra Leone": "SL",
+    "Slovakia": "SK", "Slovenia": "SI", "South Africa": "ZA", "South Korea": "KR",
+    "Spain": "ES", "Sweden": "SE", "Switzerland": "CH", "Tanzania": "TZ",
+    "Togo": "TG", "Trinidad and Tobago": "TT", "Tunisia": "TN", "Turkey": "TR",
+    "Uganda": "UG", "Ukraine": "UA", "United States": "US", "Uruguay": "UY",
+    "Venezuela": "VE", "Zambia": "ZM", "Zimbabwe": "ZW",
+}
+_UK_NATIONALITY_FLAGS = {
+    "England": "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e007f",
+    "Scotland": "\U0001f3f4\U000e0067\U000e0062\U000e0073\U000e0063\U000e0074\U000e007f",
+    "Wales": "\U0001f3f4\U000e0067\U000e0062\U000e0077\U000e006c\U000e0073\U000e007f",
+}
+
+
+def nationality_flag(nationality: str) -> str:
+    """Return a country flag emoji, or the original nationality if unavailable."""
+    if nationality in _UK_NATIONALITY_FLAGS:
+        return _UK_NATIONALITY_FLAGS[nationality]
+    code = _NATIONALITY_FLAG_CODES.get(nationality)
+    if not code:
+        return nationality
+    return "".join(chr(0x1F1E6 + ord(letter) - ord("A")) for letter in code)
+
+
 @dataclass(frozen=True)
 class ClubPlayer:
     name: str
     years: str
     apps: str | int
     goals: str | int
+    nationality: str = ""
 
 
 @dataclass
@@ -138,7 +187,16 @@ class QuizPlayer:
             return f"{home_team}: {self.home.years} / {away_team}: {self.away.years}"
         if clue_type == "initials":
             return self.initials
+        if clue_type == "nationality":
+            flags = dict.fromkeys(
+                (nationality_flag(self.home.nationality), nationality_flag(self.away.nationality))
+            )
+            return " / ".join(flags)
         raise ValueError(f"Unknown clue type: {clue_type}")
+
+    @property
+    def has_nationality(self) -> bool:
+        return bool(self.home.nationality and self.away.nationality)
 
 
 @dataclass
@@ -228,17 +286,21 @@ def _unique_season_players(sheet) -> dict[str, tuple[str, set[str], bool]]:
 def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
     records: dict[str, list[ClubPlayer]] = defaultdict(list)
     for raw_row in sheet.iter_rows(values_only=True):
-        row = tuple(raw_row) + (None,) * max(0, 6 - len(raw_row))
+        row = tuple(raw_row) + (None,) * max(0, 7 - len(raw_row))
         name = str(row[0] or "").strip()
         years = row[1]
         if not name or years in (None, "Years", "Yrs"):
             continue
+        nationality = str(row[6] or "").strip()
+        if nationality in ("-", "Unverified", "Footballing nationality"):
+            nationality = ""
         records[normalise_name(name)].append(
             ClubPlayer(
                 name=name,
                 years=str(clean_value(years)),
                 apps=clean_value(row[2]),
                 goals=clean_value(row[4]),
+                nationality=nationality,
             )
         )
     unique = {}
@@ -288,6 +350,7 @@ def load_club_players(xlsx_path: str | Path, clubs: set[str]) -> dict[str, dict[
                 years=stats_players[key].years if key in stats_players else "",
                 apps=stats_players[key].apps if key in stats_players else "",
                 goals=stats_players[key].goals if key in stats_players else "",
+                nationality=stats_players[key].nationality if key in stats_players else "",
             )
             for key in season_players
             if key not in ambiguous_stats

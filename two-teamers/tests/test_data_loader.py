@@ -85,6 +85,8 @@ def test_uses_season_membership_with_stats_from_paired_tab():
     assert rosters["Arsenal"]
     assert all(player.years != "" for player in rosters["Arsenal"].values())
     assert all(player.apps != "" for player in rosters["Arsenal"].values())
+    assert any(player.nationality for player in rosters["Arsenal"].values())
+    assert all(player.nationality != "Unverified" for player in rosters["Arsenal"].values())
 
 
 def test_ambiguous_duplicate_stats_names_are_not_merged():

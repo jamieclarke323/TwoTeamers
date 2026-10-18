@@ -298,11 +298,12 @@ def _render_quiz(quiz, is_home_game: bool = False):
     state = get_progress(_progress_identity(), quiz.quiz_id)
     solved = set(state["solved"])
     saved_clues = _answer_data(state)["clues"]
-    clue_labels = {"apps": "Apps", "goals": "Goals", "years": "Years", "initials": "Initials"}
+    clue_labels = {"apps": "Apps", "goals": "Goals", "years": "Years", "initials": "Initials", "nationality": "Nationality"}
     players = [
         {"found": index in solved or state["given_up"],
          "clues": [(clue_labels[kind], player.clue_value(kind, quiz.home_team, quiz.away_team))
-                   for kind in saved_clues.get(str(index), []) if kind in clue_labels],
+                   for kind in saved_clues.get(str(index), [])
+                   if kind in clue_labels and (kind != "nationality" or player.has_nationality)],
          **(_public_player(quiz, player, index) if index in solved or state["given_up"] else {"index": index})}
         for index, player in enumerate(quiz.players)
     ]
@@ -317,6 +318,9 @@ def _render_quiz(quiz, is_home_game: bool = False):
         given_up=state["given_up"],
         share_text=_share_result_text(quiz, state) if completed or state["given_up"] else "",
         ads_enabled=ads_enabled,
+        nationality_player_indices=[
+            index for index, player in enumerate(quiz.players) if player.has_nationality
+        ],
         clues_locked=ads_enabled and not _answer_data(state).get("clue_unlocked", False),
         adsense_client_id=current_app.config["ADSENSE_CLIENT_ID"],
         adsense_test_mode=current_app.config["ADSENSE_TEST_MODE"],
@@ -443,7 +447,7 @@ def request_clue(quiz_id):
     types = [
         value
         for value in data.get("types", [])
-        if value in ("apps", "goals", "years", "initials")
+        if value in ("apps", "goals", "years", "initials", "nationality")
     ]
     if not types:
         return jsonify({"status": "error", "message": "Choose at least one clue."}), 400
@@ -460,16 +464,32 @@ def request_clue(quiz_id):
     solved = set(state["solved"])
     target = data.get("index")
     indices = range(len(quiz.players)) if target in (None, "all") else [int(target)]
+    indices = [
+        index for index in indices
+        if 0 <= index < len(quiz.players)
+        and (index not in solved)
+    ]
+    if "nationality" in types and not any(quiz.players[index].has_nationality for index in indices):
+        types.remove("nationality")
+    if not types:
+        return jsonify({"status": "error", "message": "That clue is not available."}), 400
     clues = []
     for index in indices:
-        if index in solved or not 0 <= index < len(quiz.players):
-            continue
         player_clues = answer_data["clues"].setdefault(str(index), [])
         for clue_type in types:
+            if clue_type == "nationality" and not quiz.players[index].has_nationality:
+                continue
             if clue_type not in player_clues:
                 player_clues.append(clue_type)
         player = quiz.players[index]
-        clues.append({"index": index, **{kind: player.clue_value(kind, quiz.home_team, quiz.away_team) for kind in player_clues}})
+        clues.append({
+            "index": index,
+            **{
+                kind: player.clue_value(kind, quiz.home_team, quiz.away_team)
+                for kind in player_clues
+                if kind != "nationality" or player.has_nationality
+            },
+        })
     save_progress(identity, quiz_id, state)
     return jsonify({"status": "ok", "clues": clues})
 

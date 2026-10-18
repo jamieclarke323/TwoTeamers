@@ -1,4 +1,4 @@
-from app.data_loader import ClubPlayer, QuizPlayer
+from app.data_loader import ClubPlayer, QuizPlayer, nationality_flag
 from app.matching import MatchResult, match_guess, normalise
 
 
@@ -28,6 +28,19 @@ def test_fuzzy_correct_is_distinct_from_exact_for_auto_submit():
 def test_initials_are_derived_from_each_name_part():
     assert player("Jóhann Berg Guðmundsson").initials == "J.B.G."
     assert player("Patrick van Aanholt").initials == "P.V.A."
+
+
+def test_nationality_clue_uses_flags_and_requires_both_club_values():
+    home = ClubPlayer("Player Name", "2020", 1, 0, "France")
+    away = ClubPlayer("Player Name", "2021", 2, 1, "France")
+    p = QuizPlayer("Player Name", home, away)
+
+    assert p.has_nationality is True
+    assert p.clue_value("nationality", "Home", "Away") == "🇫🇷"
+
+    missing = QuizPlayer("Player Name", home, ClubPlayer("Player Name", "2021", 2, 1))
+    assert missing.has_nationality is False
+    assert nationality_flag("A country not mapped") == "A country not mapped"
 
 
 def test_three_part_names_allow_guessing_final_two_names():
