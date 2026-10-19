@@ -89,6 +89,14 @@ def test_uses_season_membership_with_stats_from_paired_tab():
     assert all(player.nationality != "Unverified" for player in rosters["Arsenal"].values())
 
 
+def test_championship_rosters_load_nationality_values():
+    rosters = load_club_players(
+        ROOT / "Two Teamers - Championship.xlsx", {"Birmingham City"}
+    )
+    assert rosters["Birmingham City"]
+    assert any(player.nationality for player in rosters["Birmingham City"].values())
+
+
 def test_ambiguous_duplicate_stats_names_are_not_merged():
     rosters = load_club_players(ROOT / "Two Teamers - PremierLeague.xlsx", {"Brentford"})
     assert "paulsmith" not in rosters["Brentford"]

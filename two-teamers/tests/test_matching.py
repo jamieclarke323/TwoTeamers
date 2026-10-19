@@ -36,7 +36,7 @@ def test_nationality_clue_uses_flags_and_requires_both_club_values():
     p = QuizPlayer("Player Name", home, away)
 
     assert p.has_nationality is True
-    assert p.clue_value("nationality", "Home", "Away") == "🇫🇷"
+    assert p.clue_value("nationality", "Home", "Away") == "🇫🇷 France"
 
     missing = QuizPlayer("Player Name", home, ClubPlayer("Player Name", "2021", 2, 1))
     assert missing.has_nationality is False
@@ -48,6 +48,12 @@ def test_nationality_flags_use_complete_subdivision_sequences_and_text_fallback(
     assert nationality_flag("Scotland") == "\U0001f3f4\U000e0067\U000e0062\U000e0073\U000e0063\U000e0074\U000e007f"
     assert nationality_flag("Wales") == "\U0001f3f4\U000e0067\U000e0062\U000e0077\U000e006c\U000e0073\U000e007f"
     assert nationality_flag("Kosovo") == "Kosovo"
+    home = ClubPlayer("Player Name", "2020", 1, 0, "England")
+    away = ClubPlayer("Player Name", "2021", 2, 1, "Kosovo")
+    p = QuizPlayer("Player Name", home, away)
+    assert p.clue_value("nationality", "Home", "Away") == (
+        "\U0001f3f4\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f England / Kosovo"
+    )
 
 
 def test_three_part_names_allow_guessing_final_two_names():

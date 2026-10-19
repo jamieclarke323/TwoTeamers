@@ -141,7 +141,7 @@ def test_nationality_clue_returns_flag_when_both_team_values_exist(client, app):
         f"/quiz/{quiz.quiz_id}/clue",
         json={"types": ["nationality"], "index": 0},
     )
-    assert response.get_json()["clues"] == [{"index": 0, "nationality": "🇫🇷"}]
+    assert response.get_json()["clues"] == [{"index": 0, "nationality": "🇫🇷 France"}]
 
 
 def test_nationality_clue_is_not_offered_or_returned_when_either_value_missing(client, app):

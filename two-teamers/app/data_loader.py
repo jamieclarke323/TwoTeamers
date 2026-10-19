@@ -149,6 +149,12 @@ def nationality_flag(nationality: str) -> str:
     return "".join(chr(0x1F1E6 + ord(letter) - ord("A")) for letter in code)
 
 
+def nationality_display(nationality: str) -> str:
+    """Return a nationality with its flag emoji when one is available."""
+    flag = nationality_flag(nationality)
+    return f"{flag} {nationality}" if flag != nationality else nationality
+
+
 @dataclass(frozen=True)
 class ClubPlayer:
     name: str
@@ -188,10 +194,8 @@ class QuizPlayer:
         if clue_type == "initials":
             return self.initials
         if clue_type == "nationality":
-            flags = dict.fromkeys(
-                (nationality_flag(self.home.nationality), nationality_flag(self.away.nationality))
-            )
-            return " / ".join(flags)
+            nationalities = dict.fromkeys((self.home.nationality, self.away.nationality))
+            return " / ".join(nationality_display(value) for value in nationalities)
         raise ValueError(f"Unknown clue type: {clue_type}")
 
     @property
