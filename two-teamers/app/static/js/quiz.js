@@ -10,7 +10,7 @@
   const dismissShareButton = document.getElementById("dismiss-share-result");
   const shareAgainButton = document.getElementById("share-results");
   const clipboardToast = document.getElementById("clipboard-toast");
-  const clueLabels = {apps: "Apps", goals: "Goals", years: "Years", initials: "Initials", nationality: "Nationality"};
+  const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality"};
   let clueTarget = "all";
   let exactTimer;
   let shareText = data.shareText || "";

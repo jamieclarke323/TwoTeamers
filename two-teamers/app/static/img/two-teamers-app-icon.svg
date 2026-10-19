@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768">
+  <rect width="768" height="768" fill="#292833"/>
+  <path d="M59 77h650v101H585v276H181V178H59z" fill="#c8f23b" stroke="#c8f23b" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M321 77h388v101H585v276H443V178H321z" fill="#11140f"/>
+  <rect x="57" y="77" width="652" height="101" rx="7" fill="none" stroke="#c8f23b" stroke-width="7"/>
+  <text x="181" y="147" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="55" font-weight="800" letter-spacing="15" fill="#fff" stroke="#11140f" stroke-width="5" paint-order="stroke">TWO</text>
+  <text x="513" y="147" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="55" font-weight="800" letter-spacing="12" fill="#fff" stroke="#11140f" stroke-width="5" paint-order="stroke">TEAMERS</text>
+  <circle cx="383" cy="487" r="202" fill="#f4f3ec" stroke="#11140f" stroke-width="7"/>
+  <path d="M314 307Q383 282 452 307l22 35-91 32-91-32z" fill="#050914" stroke="#11140f" stroke-width="7"/>
+  <path d="m314 342 69 32v67l-65 48-69-23q-19-72 31-124z" fill="#f4f3ec" stroke="#11140f" stroke-width="7"/>
+  <path d="m452 342-69 32v67l65 48 69-23q19-72-31-124z" fill="#f4f3ec" stroke="#11140f" stroke-width="7"/>
+  <path d="m249 369-37 17q-31 70 8 127l44-57q-14-46-15-87z" fill="#050914" stroke="#11140f" stroke-width="7"/>
+  <path d="m517 369 37 17q31 70-8 127l-44-57q14-46 15-87z" fill="#050914" stroke="#11140f" stroke-width="7"/>
+  <path d="m318 490 65-49 65 49-28 78h-74z" fill="#11140f" stroke="#11140f" stroke-width="7"/>
+  <path d="m264 456 54 34 28 78-43 57q-68-22-91-83l16-66z" fill="#f4f3ec" stroke="#11140f" stroke-width="7"/>
+  <path d="m502 456-54 34-28 78 43 57q68-22 91-83l-16-66z" fill="#f4f3ec" stroke="#11140f" stroke-width="7"/>
+  <path d="m303 625 43-57h74l43 57q-34 34-80 34t-80-34z" fill="#f4f3ec" stroke="#11140f" stroke-width="7"/>
+  <path d="M219 582q32 59 87 74l28-31-40 62q-48-9-73-40zM547 582q-32 59-87 74l-28-31 40 62q48-9 73-40z" fill="#050914" stroke="#11140f" stroke-width="7"/>
+  <circle cx="383" cy="487" r="202" fill="none" stroke="#c8f23b" stroke-width="7"/>
+  <text x="383" y="528" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="900" fill="#c8f23b">T</text>
+</svg>

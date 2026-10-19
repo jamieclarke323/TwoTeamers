@@ -56,6 +56,26 @@ def test_nationality_flags_use_complete_subdivision_sequences_and_text_fallback(
     )
 
 
+def test_nationality_aliases_deduplicate_and_keep_first_name():
+    home = ClubPlayer("Player Name", "2020", 1, 0, "Ireland")
+    away = ClubPlayer("Player Name", "2021", 2, 1, "Republic of Ireland")
+    p = QuizPlayer("Player Name", home, away)
+
+    assert p.clue_value("nationality", "Home", "Away") == "🇮🇪 Ireland"
+    p.home, p.away = away, home
+    assert p.clue_value("nationality", "Home", "Away") == "🇮🇪 Republic of Ireland"
+
+
+def test_apps_and_goals_are_not_clue_types():
+    p = player()
+    for clue_type in ("apps", "goals"):
+        try:
+            p.clue_value(clue_type, "Home", "Away")
+        except ValueError:
+            continue
+        raise AssertionError(f"{clue_type} should not be a clue type")
+
+
 def test_three_part_names_allow_guessing_final_two_names():
     p = player("Patrick van Aanholt")
     assert "van Aanholt" in p.acceptable_answers

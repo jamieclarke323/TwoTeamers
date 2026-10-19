@@ -155,6 +155,14 @@ def nationality_display(nationality: str) -> str:
     return f"{flag} {nationality}" if flag != nationality else nationality
 
 
+def _nationality_identity(nationality: str) -> tuple[str, str]:
+    if nationality in _NATIONALITY_FLAG_CODES:
+        return "country-code", _NATIONALITY_FLAG_CODES[nationality]
+    if nationality in _UK_NATIONALITY_FLAGS:
+        return "subdivision", nationality
+    return "name", nationality.casefold()
+
+
 @dataclass(frozen=True)
 class ClubPlayer:
     name: str
@@ -185,17 +193,15 @@ class QuizPlayer:
         self.initials = "".join(f"{part[0].upper()}." for part in parts if part)
 
     def clue_value(self, clue_type: str, home_team: str, away_team: str) -> str:
-        if clue_type == "apps":
-            return f"{home_team}: {self.home.apps} / {away_team}: {self.away.apps}"
-        if clue_type == "goals":
-            return f"{home_team}: {self.home.goals} / {away_team}: {self.away.goals}"
         if clue_type == "years":
             return f"{home_team}: {self.home.years} / {away_team}: {self.away.years}"
         if clue_type == "initials":
             return self.initials
         if clue_type == "nationality":
-            nationalities = dict.fromkeys((self.home.nationality, self.away.nationality))
-            return " / ".join(nationality_display(value) for value in nationalities)
+            nationalities = {}
+            for nationality in (self.home.nationality, self.away.nationality):
+                nationalities.setdefault(_nationality_identity(nationality), nationality)
+            return " / ".join(nationality_display(value) for value in nationalities.values())
         raise ValueError(f"Unknown clue type: {clue_type}")
 
     @property

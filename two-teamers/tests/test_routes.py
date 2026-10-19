@@ -12,13 +12,13 @@ def test_revealed_clues_accumulate_and_survive_reload(client, app):
     quiz = app.config["QUIZZES"][0]
     url = f"/quiz/{quiz.quiz_id}"
     client.post(f"{url}/clue", json={"types": ["initials"], "index": 0})
-    response = client.post(f"{url}/clue", json={"types": ["apps"], "index": 0})
+    response = client.post(f"{url}/clue", json={"types": ["years"], "index": 0})
     clue = response.get_json()["clues"][0]
     assert clue["initials"] == quiz.players[0].initials
-    assert "apps" in clue
+    assert "years" in clue
     page = client.get(url).data
     assert f"<strong>Initials:</strong> {quiz.players[0].initials}".encode() in page
-    assert b"<strong>Apps:</strong>" in page
+    assert b"<strong>Years:</strong>" in page
 
 
 def test_visitors_are_sent_to_login(client):
@@ -169,6 +169,19 @@ def test_quiz_page_offers_initials_clue(signed_in_client, app):
     assert b'value="initials"' in response.data
 
 
+def test_apps_and_goals_are_not_offered_or_accepted_as_clues(client, app):
+    quiz = app.config["QUIZZES"][0]
+    page = client.get(f"/quiz/{quiz.quiz_id}").data
+    assert b'value="apps"' not in page
+    assert b'value="goals"' not in page
+    for clue_type in ("apps", "goals"):
+        response = client.post(
+            f"/quiz/{quiz.quiz_id}/clue",
+            json={"types": [clue_type], "index": 0},
+        )
+        assert response.status_code == 400
+
+
 def test_clues_are_not_ad_gated_by_default(client, app):
     quiz = app.config["QUIZZES"][0]
     page = client.get(f"/quiz/{quiz.quiz_id}")
@@ -181,19 +194,20 @@ def test_rewarded_ads_lock_clues_until_ad_watched(client, app):
     quiz = app.config["QUIZZES"][0]
     page = client.get(f"/quiz/{quiz.quiz_id}")
     assert b"Watch an ad to unlock clues!" in page.data
-    assert b'value="apps" disabled' in page.data
+    assert b'value="years" disabled' in page.data
+    assert b'value="apps"' not in page.data
     assert b"js/ads.js" in page.data
 
     clue_url = f"/quiz/{quiz.quiz_id}/clue"
-    locked = client.post(clue_url, json={"types": ["apps"], "index": 0})
+    locked = client.post(clue_url, json={"types": ["years"], "index": 0})
     assert locked.status_code == 403
     assert locked.get_json()["status"] == "ad_required"
 
     assert client.post(f"/quiz/{quiz.quiz_id}/clue-unlock", json={}).get_json()["status"] == "unlocked"
-    assert b'value="apps" disabled' not in client.get(f"/quiz/{quiz.quiz_id}").data
-    assert client.post(clue_url, json={"types": ["apps"], "index": 0}).status_code == 200
+    assert b'value="years" disabled' not in client.get(f"/quiz/{quiz.quiz_id}").data
+    assert client.post(clue_url, json={"types": ["years"], "index": 0}).status_code == 200
     # One ad pays for one reveal.
-    assert client.post(clue_url, json={"types": ["goals"], "index": 0}).status_code == 403
+    assert client.post(clue_url, json={"types": ["initials"], "index": 0}).status_code == 403
 
 
 def test_adsense_script_loads_only_with_client_id(client, app):
@@ -215,8 +229,8 @@ def test_quiz_page_displays_player_season_cutoff(signed_in_client, app):
 def test_quiz_script_labels_numeric_clues():
     script_path = PROJECT_ROOT / "app" / "static" / "js" / "quiz.js"
     script = script_path.read_text()
-    assert 'apps: "Apps"' in script
-    assert 'goals: "Goals"' in script
+    assert 'apps: "Apps"' not in script
+    assert 'goals: "Goals"' not in script
     assert 'initials: "Initials"' in script
     assert 'nationality: "Nationality"' in script
 
@@ -226,7 +240,7 @@ def test_share_result_uses_original_card_order_and_clue_count(signed_in_client, 
     # Solve later cards first, leaving card zero unanswered to verify display order.
     signed_in_client.post(
         f"/quiz/{quiz.quiz_id}/clue",
-        json={"types": ["apps", "goals"], "index": 1},
+        json={"types": ["years", "initials"], "index": 1},
     )
     signed_in_client.post(
         f"/quiz/{quiz.quiz_id}/guess", json={"guess": quiz.players[1].name}

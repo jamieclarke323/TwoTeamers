@@ -117,7 +117,7 @@ def test_clue_freezes_score_before_later_correct_answers(signed_in_client, app):
         f"/quiz/{quiz.quiz_id}/guess", json={"guess": first_player.name}
     )
     signed_in_client.post(
-        f"/quiz/{quiz.quiz_id}/clue", json={"types": ["apps"], "index": 1}
+        f"/quiz/{quiz.quiz_id}/clue", json={"types": ["years"], "index": 1}
     )
     signed_in_client.post(
         f"/quiz/{quiz.quiz_id}/guess", json={"guess": second_player.name}

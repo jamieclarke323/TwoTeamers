@@ -298,7 +298,7 @@ def _render_quiz(quiz, is_home_game: bool = False):
     state = get_progress(_progress_identity(), quiz.quiz_id)
     solved = set(state["solved"])
     saved_clues = _answer_data(state)["clues"]
-    clue_labels = {"apps": "Apps", "goals": "Goals", "years": "Years", "initials": "Initials", "nationality": "Nationality"}
+    clue_labels = {"years": "Years", "initials": "Initials", "nationality": "Nationality"}
     players = [
         {"found": index in solved or state["given_up"],
          "clues": [(clue_labels[kind], player.clue_value(kind, quiz.home_team, quiz.away_team))
@@ -447,7 +447,7 @@ def request_clue(quiz_id):
     types = [
         value
         for value in data.get("types", [])
-        if value in ("apps", "goals", "years", "initials", "nationality")
+        if value in ("years", "initials", "nationality")
     ]
     if not types:
         return jsonify({"status": "error", "message": "Choose at least one clue."}), 400
@@ -487,7 +487,8 @@ def request_clue(quiz_id):
             **{
                 kind: player.clue_value(kind, quiz.home_team, quiz.away_team)
                 for kind in player_clues
-                if kind != "nationality" or player.has_nationality
+                if kind in ("years", "initials", "nationality")
+                and (kind != "nationality" or player.has_nationality)
             },
         })
     save_progress(identity, quiz_id, state)

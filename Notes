@@ -35,3 +35,6 @@ Day 2:
 ##League table based on supporter's average success %
 - Ranking amongst own team's supporters based on success %
 - Push notification reminders
+
+- Nationality rules
+  - If they represented a nation at senior level, that will be their listed nationality. If they didn't represent a nation at senior level, their nationality will be their place of birth/citizenship.
