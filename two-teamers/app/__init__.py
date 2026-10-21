@@ -33,6 +33,11 @@ def create_app(test_config: dict | None = None) -> Flask:
         # Blank client ID with ads enabled uses a simulated ad for local testing.
         ADSENSE_CLIENT_ID=os.environ.get("ADSENSE_CLIENT_ID", ""),
         ADSENSE_TEST_MODE=os.environ.get("ADSENSE_TEST_MODE", "1") == "1",
+        PUSH_VAPID_PUBLIC_KEY=os.environ.get("PUSH_VAPID_PUBLIC_KEY", ""),
+        PUSH_VAPID_PRIVATE_KEY_FILE=os.environ.get("PUSH_VAPID_PRIVATE_KEY_FILE", ""),
+        PUSH_VAPID_SUBJECT=os.environ.get(
+            "PUSH_VAPID_SUBJECT", "mailto:twoteamerssupport@gmail.com"
+        ),
     )
     if test_config:
         app.config.update(test_config)

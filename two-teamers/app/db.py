@@ -42,6 +42,22 @@ CREATE TABLE IF NOT EXISTS guest_progress (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (visitor_id, quiz_id)
 );
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    subscription_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS push_subscriptions_user_id_idx
+    ON push_subscriptions(user_id);
+CREATE TABLE IF NOT EXISTS push_notification_sends (
+    user_id INTEGER NOT NULL,
+    notification_date TEXT NOT NULL,
+    quiz_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, notification_date),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 """
 
 

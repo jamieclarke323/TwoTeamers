@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import re
 from functools import wraps
 from urllib.parse import urljoin, urlparse
 
-from flask import Blueprint, current_app, flash, g, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db, transfer_guest_progress
@@ -126,7 +127,83 @@ def profile():
             db.commit()
             flash("Your team has been updated.", "success")
             return redirect(url_for("auth.profile"))
-    return render_template("profile.html", team_choices=team_choices)
+    subscription_count = get_db().execute(
+        "SELECT COUNT(*) FROM push_subscriptions WHERE user_id = ?", (g.user["id"],)
+    ).fetchone()[0]
+    return render_template(
+        "profile.html",
+        team_choices=team_choices,
+        push_notifications_available=bool(current_app.config["PUSH_VAPID_PUBLIC_KEY"]),
+        push_public_key=current_app.config["PUSH_VAPID_PUBLIC_KEY"],
+        has_push_subscriptions=subscription_count > 0,
+    )
+
+
+def _valid_push_endpoint(endpoint: str) -> bool:
+    try:
+        parsed = urlparse(endpoint)
+        host = (parsed.hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    allowed_suffixes = (
+        "fcm.googleapis.com",
+        "push.services.mozilla.com",
+        "push.apple.com",
+        "notify.windows.com",
+    )
+    return (
+        parsed.scheme == "https"
+        and not parsed.username
+        and not parsed.password
+        and any(host == suffix or host.endswith(f".{suffix}") for suffix in allowed_suffixes)
+    )
+
+
+@bp.post("/push/subscribe")
+@login_required
+def save_push_subscription():
+    if not current_app.config["PUSH_VAPID_PUBLIC_KEY"]:
+        return jsonify({"error": "Push notifications are not configured."}), 503
+    subscription = request.get_json(silent=True)
+    if not isinstance(subscription, dict):
+        return jsonify({"error": "A valid push subscription is required."}), 400
+    endpoint = subscription.get("endpoint")
+    keys = subscription.get("keys")
+    if (
+        not isinstance(endpoint, str)
+        or not _valid_push_endpoint(endpoint)
+        or not isinstance(keys, dict)
+        or not isinstance(keys.get("p256dh"), str)
+        or not keys["p256dh"]
+        or not isinstance(keys.get("auth"), str)
+        or not keys["auth"]
+    ):
+        return jsonify({"error": "A valid push subscription is required."}), 400
+    get_db().execute(
+        """INSERT INTO push_subscriptions (endpoint, user_id, subscription_json)
+           VALUES (?, ?, ?)
+           ON CONFLICT(endpoint) DO UPDATE SET
+             user_id = excluded.user_id,
+             subscription_json = excluded.subscription_json""",
+        (endpoint, g.user["id"], json.dumps(subscription)),
+    )
+    get_db().commit()
+    return jsonify({"status": "subscribed"})
+
+
+@bp.post("/push/unsubscribe")
+@login_required
+def remove_push_subscription():
+    subscription = request.get_json(silent=True)
+    endpoint = subscription.get("endpoint") if isinstance(subscription, dict) else None
+    if not isinstance(endpoint, str) or not _valid_push_endpoint(endpoint):
+        return jsonify({"error": "A valid push subscription is required."}), 400
+    get_db().execute(
+        "DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?",
+        (endpoint, g.user["id"]),
+    )
+    get_db().commit()
+    return jsonify({"status": "unsubscribed"})
 
 
 @bp.post("/logout")

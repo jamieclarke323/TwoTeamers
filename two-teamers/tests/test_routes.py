@@ -39,6 +39,10 @@ def test_pwa_manifest_and_badge_icon_are_linked(client):
     assert b'rel="manifest"' in page.data
     assert b"two-teamers-app-icon" in page.data
 
+    worker = client.get("/service-worker.js")
+    assert worker.status_code == 200
+    assert worker.headers["Service-Worker-Allowed"] == "/"
+
     manifest = client.get("/static/manifest.webmanifest")
     assert manifest.status_code == 200
     assert b'"display": "standalone"' in manifest.data

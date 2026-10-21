@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 from uuid import uuid4
 
-from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 
 from .auth import login_required
 from .badges import BADGE_FILES
@@ -14,6 +14,14 @@ from .leaderboard import calculate_standings, fan_standing
 from .matching import MatchResult, match_guess
 
 bp = Blueprint("main", __name__)
+
+
+@bp.get("/service-worker.js")
+def service_worker():
+    response = send_from_directory(current_app.static_folder, "service-worker.js")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def todays_featured_quiz(now: datetime | None = None):
