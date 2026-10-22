@@ -140,7 +140,9 @@ def test_champions_league_wildcard_available_in_featured_quizzes(app):
         None,
     )
     assert atletico_quiz is not None
-    assert len(atletico_quiz.players) == 6
+    assert {player.name for player in atletico_quiz.players} == {
+        "Matheus Cunha", "Radamel Falcao", "David de Gea",
+    }
 
 
 def test_champions_league_teams_not_on_home_or_teams_page(client):
@@ -156,11 +158,18 @@ def test_champions_league_teams_not_on_home_or_teams_page(client):
 def test_admin_matchup_screen_generates_all_answers(client):
     response = client.get("/admin?team1=Charlton+Athletic&team2=Portsmouth")
     assert response.status_code == 200
-    assert b"41" in response.data
+    assert b"37" in response.data
     assert b"player" in response.data
     assert b"Paul Benson" in response.data
     assert b"Charlton Athletic: 2010-2011" in response.data
     assert b"Portsmouth: 2012" in response.data
+
+
+def test_admin_matchup_does_not_merge_the_two_marcelos(client):
+    response = client.get("/admin?team1=Real+Madrid&team2=Birmingham+City")
+    assert response.status_code == 200
+    assert b"Jude Bellingham" in response.data
+    assert b"Marcelo" not in response.data
 
 
 def test_admin_screen_not_linked_in_navbar_or_home(client):

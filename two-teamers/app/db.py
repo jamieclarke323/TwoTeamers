@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from pathlib import Path
 
 from flask import Flask, current_app, g
+
+LEGACY_QUIZ_ANSWERS_PATH = Path(__file__).with_name("legacy_quiz_answers.json")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -58,6 +61,10 @@ CREATE TABLE IF NOT EXISTS push_notification_sends (
     PRIMARY KEY (user_id, notification_date),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS quiz_answer_versions (
+    quiz_id TEXT PRIMARY KEY,
+    fingerprint TEXT NOT NULL
+);
 """
 
 
@@ -107,6 +114,46 @@ def _progress_table(identity: int | str) -> tuple[str, str]:
     if isinstance(identity, int):
         return "progress", "user_id"
     return "guest_progress", "visitor_id"
+
+
+def _answer_fingerprint(answers: list) -> str:
+    return hashlib.sha256(json.dumps(answers).encode("utf-8")).hexdigest()
+
+
+def sync_quiz_progress(quizzes) -> None:
+    """Invalidate positional saves only when their quiz answer list changes."""
+    db = get_db()
+    versions = dict(db.execute("SELECT quiz_id, fingerprint FROM quiz_answer_versions"))
+    legacy = json.loads(LEGACY_QUIZ_ANSWERS_PATH.read_text(encoding="utf-8"))["answers"]
+    changed = []
+    current = []
+    for quiz in quizzes:
+        fingerprint = _answer_fingerprint([
+            (player.name, player.home.identity, player.away.identity)
+            for player in quiz.players
+        ])
+        previous = versions.get(quiz.quiz_id)
+        if previous is None:
+            legacy_fingerprint = legacy.get(quiz.quiz_id)
+            is_changed = (
+                legacy_fingerprint is not None
+                and legacy_fingerprint != _answer_fingerprint([p.name for p in quiz.players])
+            )
+        else:
+            is_changed = previous != fingerprint
+        if is_changed:
+            changed.append((quiz.quiz_id,))
+        current.append((quiz.quiz_id, fingerprint))
+    for table in ("progress", "guest_progress"):
+        db.executemany(f"DELETE FROM {table} WHERE quiz_id = ?", changed)
+    db.executemany(
+        """INSERT INTO quiz_answer_versions (quiz_id, fingerprint) VALUES (?, ?)
+           ON CONFLICT(quiz_id) DO UPDATE SET fingerprint = excluded.fingerprint""",
+        current,
+    )
+    db.commit()
+    if changed:
+        current_app.logger.info("Reset progress for %s changed quizzes.", len(changed))
 
 
 def get_progress(user_id: int | str, quiz_id: str) -> dict:

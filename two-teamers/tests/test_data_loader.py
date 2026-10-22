@@ -10,6 +10,7 @@ from app.data_loader import (
     load_all_clubs,
     load_club_players,
     load_quizzes,
+    normalise_name,
     WORKBOOK_SHEET_ALIASES,
 )
 import openpyxl
@@ -38,10 +39,10 @@ def test_loads_all_four_leagues_and_all_fixtures():
         for league in leagues
     }
     assert empty_counts == {
-        "premier-league": 0,
+        "premier-league": 6,
         "championship": 0,
         "league-one": 2,
-        "league-two": 0,
+        "league-two": 2,
     }
 
 
@@ -61,7 +62,7 @@ def test_league_one_and_two_club_sheet_aliases_load():
     assert league_two["Barnet"]
 
 
-def test_clubs_without_stats_tabs_keep_players_with_blank_clues():
+def test_spaced_stats_tabs_load_ids_and_clues():
     league_one = load_club_players(
         ROOT / "Two Teamers - League One.xlsx", {"Blackpool"}
     )
@@ -70,8 +71,8 @@ def test_clubs_without_stats_tabs_keep_players_with_blank_clues():
     )
     assert league_one["Blackpool"]
     assert league_two["Barnet"]
-    assert all(player.apps == "" and player.goals == "" for player in league_one["Blackpool"].values())
-    assert all(player.apps == "" and player.goals == "" for player in league_two["Barnet"].values())
+    assert any(player.player_id and player.apps != "" for player in league_one["Blackpool"].values())
+    assert any(player.player_id and player.apps != "" for player in league_two["Barnet"].values())
 
 
 def test_all_divisions_include_matchweek_46():
@@ -97,9 +98,11 @@ def test_championship_rosters_load_nationality_values():
     assert any(player.nationality for player in rosters["Birmingham City"].values())
 
 
-def test_ambiguous_duplicate_stats_names_are_not_merged():
+def test_duplicate_stats_names_are_distinguished_by_id():
     rosters = load_club_players(ROOT / "Two Teamers - PremierLeague.xlsx", {"Brentford"})
-    assert "paulsmith" not in rosters["Brentford"]
+    players = [player for player in rosters["Brentford"].values() if player.name == "Paul Smith"]
+    assert len(players) == 1
+    assert players[0].player_id == "e50d714b"
 
 
 def test_workbook_sheet_aliases_map_to_fixture_club_names():
@@ -134,15 +137,20 @@ def test_club_rosters_only_contain_players_with_eligible_stats_years():
         for club, roster in rosters.items():
             sheet = workbook[WORKBOOK_SHEET_ALIASES.get(club, club)]
             memberships = _unique_season_players(sheet)
-            for key in roster:
+            for player in roster.values():
+                key = normalise_name(player.name)
                 assert any(_played_in_eligible_season(season) for season in memberships[key][1])
+                if player.player_id:
+                    assert _played_in_eligible_season(player.years)
+        workbook.close()
 
 
 def test_cardiff_charlton_rosters_include_karlan_grant():
     workbook_path = ROOT / "Two Teamers - Championship.xlsx"
     rosters = load_club_players(workbook_path, {"Cardiff City", "Charlton Athletic"})
-    assert "karlangrant" in rosters["Cardiff City"]
-    assert "karlangrant" in rosters["Charlton Athletic"]
+    cardiff = next(player for player in rosters["Cardiff City"].values() if player.name == "Karlan Grant")
+    charlton = next(player for player in rosters["Charlton Athletic"].values() if player.name == "Karlan Grant")
+    assert cardiff.player_id == charlton.player_id == "87f7500e"
 
 
 def test_loaded_fixture_players_are_only_present_at_both_clubs_since_cutoff():
@@ -160,8 +168,9 @@ def test_loaded_fixture_players_are_only_present_at_both_clubs_since_cutoff():
         )
     for quiz in quizzes:
         for player in quiz.players:
-            assert player.name in {p.name for p in rosters[quiz.home_team].values()}
-            assert player.name in {p.name for p in rosters[quiz.away_team].values()}
+            assert player.home in rosters[quiz.home_team].values()
+            assert player.away in rosters[quiz.away_team].values()
+            assert player.home.identity == player.away.identity
 
 
 def test_fixture_playable_window_matches_configured_hours_from_unlock_hour():

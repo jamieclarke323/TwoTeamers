@@ -7,7 +7,7 @@ from pathlib import Path
 from flask import Flask
 
 from .data_loader import CHAMPIONS_LEAGUE_WORKBOOK, FEATURED_WORKBOOK, load_game_data
-from .db import close_db, init_db
+from .db import close_db, init_db, sync_quiz_progress
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_DIR.parent
@@ -67,11 +67,13 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config["QUIZZES_BY_ID"] = {quiz.quiz_id: quiz for quiz in [*quizzes, *featured]}
     app.config["ALL_ROSTERS"] = all_rosters
     app.config["ALL_CLUBS"] = sorted(all_rosters.keys())
+    app.teardown_appcontext(close_db)
+    with app.app_context():
+        sync_quiz_progress([*quizzes, *featured])
 
     from .auth import bp as auth_bp
     from .routes import bp as main_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
-    app.teardown_appcontext(close_db)
     return app

@@ -170,6 +170,11 @@ class ClubPlayer:
     apps: str | int
     goals: str | int
     nationality: str = ""
+    player_id: str = ""
+
+    @property
+    def identity(self) -> str:
+        return f"id:{self.player_id}" if self.player_id else normalise_name(self.name)
 
 
 @dataclass
@@ -184,11 +189,14 @@ class QuizPlayer:
     def __post_init__(self) -> None:
         parts = self.name.split()
         self.surname = parts[-1] if parts else self.name
-        candidates = [self.name]
-        if len(parts) >= 3:
-            candidates.append(" ".join(parts[-2:]))
-        if self.surname:
-            candidates.append(self.surname)
+        candidates = []
+        for name in dict.fromkeys((self.name, self.home.name, self.away.name)):
+            name_parts = name.split()
+            candidates.append(name)
+            if len(name_parts) >= 3:
+                candidates.append(" ".join(name_parts[-2:]))
+            if name_parts:
+                candidates.append(name_parts[-1])
         self.acceptable_answers = list(dict.fromkeys(candidates))
         self.initials = "".join(f"{part[0].upper()}." for part in parts if part)
 
@@ -295,24 +303,43 @@ def _unique_season_players(sheet) -> dict[str, tuple[str, set[str], bool]]:
 
 def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
     records: dict[str, list[ClubPlayer]] = defaultdict(list)
+    nationality_column: int | None = 6
+    player_id_column: int | None = None
+    found_header = False
     for raw_row in sheet.iter_rows(values_only=True):
         row = tuple(raw_row) + (None,) * max(0, 7 - len(raw_row))
         name = str(row[0] or "").strip()
         years = row[1]
-        if not name or years in (None, "Years", "Yrs"):
+        if years in ("Years", "Yrs"):
+            if not found_header:
+                columns = {str(value or "").strip(): index for index, value in enumerate(row)}
+                nationality_column = columns.get("Nationality")
+                player_id_column = columns.get("PlayerId")
+                found_header = True
             continue
-        nationality = str(row[6] or "").strip()
+        if not name or years is None:
+            continue
+        nationality = (
+            str(row[nationality_column] or "").strip()
+            if nationality_column is not None and nationality_column < len(row)
+            else ""
+        )
         if nationality in ("-", "Unverified", "Footballing nationality"):
             nationality = ""
-        records[normalise_name(name)].append(
-            ClubPlayer(
-                name=name,
-                years=str(clean_value(years)),
-                apps=clean_value(row[2]),
-                goals=clean_value(row[4]),
-                nationality=nationality,
-            )
+        player_id = (
+            str(clean_value(row[player_id_column])).strip()
+            if player_id_column is not None and player_id_column < len(row)
+            else ""
         )
+        player = ClubPlayer(
+            name=name,
+            years=str(clean_value(years)),
+            apps=clean_value(row[2]),
+            goals=clean_value(row[4]),
+            nationality=nationality,
+            player_id=player_id,
+        )
+        records[player.identity].append(player)
     unique = {}
     ambiguous = set()
     for key, values in records.items():
@@ -324,6 +351,7 @@ def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
             unique[key] = eligible[0]
         else:
             ambiguous.add(key)
+            ambiguous.update(normalise_name(record.name) for record in values)
     return unique, ambiguous
 
 
@@ -343,29 +371,50 @@ def _played_in_eligible_season(years: str) -> bool:
 def load_club_players(xlsx_path: str | Path, clubs: set[str]) -> dict[str, dict[str, ClubPlayer]]:
     workbook = openpyxl.load_workbook(xlsx_path, read_only=True, data_only=True)
     rosters: dict[str, dict[str, ClubPlayer]] = {}
-    for club in sorted(clubs):
-        sheet_name = WORKBOOK_SHEET_ALIASES.get(club, club)
-        stats_sheet_name = f"{sheet_name}Stats"
-        if sheet_name not in workbook.sheetnames:
-            continue
-        season_players = _unique_season_players(workbook[sheet_name])
-        stats_players, ambiguous_stats = (
-            _stats_players(workbook[stats_sheet_name])
-            if stats_sheet_name in workbook.sheetnames
-            else ({}, set())
-        )
-        rosters[club] = {
-            key: ClubPlayer(
-                name=season_players[key][0],
-                years=stats_players[key].years if key in stats_players else "",
-                apps=stats_players[key].apps if key in stats_players else "",
-                goals=stats_players[key].goals if key in stats_players else "",
-                nationality=stats_players[key].nationality if key in stats_players else "",
+    try:
+        for club in sorted(clubs):
+            sheet_name = WORKBOOK_SHEET_ALIASES.get(club, club)
+            if sheet_name not in workbook.sheetnames:
+                continue
+            stats_sheet_name = next(
+                (name for name in (f"{sheet_name}Stats", f"{sheet_name} Stats")
+                 if name in workbook.sheetnames),
+                None,
             )
-            for key in season_players
-            if key not in ambiguous_stats
-            and any(_played_in_eligible_season(season) for season in season_players[key][1])
-        }
+            season_players = _unique_season_players(workbook[sheet_name])
+            stats_players, ambiguous_stats = (
+                _stats_players(workbook[stats_sheet_name])
+                if stats_sheet_name is not None
+                else ({}, set())
+            )
+            stats_by_name: dict[str, list[ClubPlayer]] = defaultdict(list)
+            for player in stats_players.values():
+                stats_by_name[normalise_name(player.name)].append(player)
+            roster: dict[str, ClubPlayer] = {}
+            for name_key, (name, seasons, _) in season_players.items():
+                if not any(_played_in_eligible_season(season) for season in seasons):
+                    continue
+                candidates = stats_by_name.get(name_key, [])
+                if not candidates:
+                    if name_key not in ambiguous_stats:
+                        roster[name_key] = ClubPlayer(name, "", "", "")
+                    continue
+                for stats in candidates:
+                    # Season lists contain names, so the stats years also have to
+                    # rule out a pre-cutoff namesake with a different ID.
+                    if stats.player_id and not _played_in_eligible_season(stats.years):
+                        continue
+                    roster[stats.identity] = ClubPlayer(
+                        name=name,
+                        years=stats.years,
+                        apps=stats.apps,
+                        goals=stats.goals,
+                        nationality=stats.nationality,
+                        player_id=stats.player_id,
+                    )
+            rosters[club] = roster
+    finally:
+        workbook.close()
     return rosters
 
 
@@ -389,7 +438,11 @@ def _shared_players(rosters, home_team: str, away_team: str) -> list[QuizPlayer]
     away_roster = rosters.get(away_team, {})
     shared_names = sorted(
         home_roster.keys() & away_roster.keys(),
-        key=lambda key: (normalise_name(home_roster[key].name.split()[-1]), normalise_name(home_roster[key].name)),
+        key=lambda key: (
+            normalise_name(home_roster[key].name.split()[-1]),
+            normalise_name(home_roster[key].name),
+            key,
+        ),
     )
     return [QuizPlayer(home_roster[key].name, home_roster[key], away_roster[key]) for key in shared_names]
 
@@ -444,7 +497,10 @@ def load_champions_league_rosters(xlsx_path: str | Path) -> dict[str, dict[str, 
     if not path.is_file():
         return {}
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
-    clubs = {name for name in workbook.sheetnames if not name.endswith("Stats") and name != "TeamIDs"}
+    try:
+        clubs = {name for name in workbook.sheetnames if not name.endswith("Stats") and name != "TeamIDs"}
+    finally:
+        workbook.close()
     return load_club_players(path, clubs)
 
 
