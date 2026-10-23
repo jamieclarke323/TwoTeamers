@@ -65,6 +65,15 @@ CREATE TABLE IF NOT EXISTS quiz_answer_versions (
     quiz_id TEXT PRIMARY KEY,
     fingerprint TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS offline_sessions (
+    id TEXT PRIMARY KEY,
+    identity TEXT NOT NULL,
+    quiz_id TEXT NOT NULL,
+    state_hash TEXT NOT NULL,
+    acknowledged INTEGER NOT NULL DEFAULT 0,
+    last_action_at INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
 """
 
 
@@ -185,7 +194,7 @@ def get_progress(user_id: int | str, quiz_id: str) -> dict:
     }
 
 
-def save_progress(user_id: int | str, quiz_id: str, state: dict) -> None:
+def save_progress(user_id: int | str, quiz_id: str, state: dict, *, commit: bool = True) -> None:
     db = get_db()
     table, identity_column = _progress_table(user_id)
     existing = db.execute(
@@ -228,7 +237,8 @@ def save_progress(user_id: int | str, quiz_id: str, state: dict) -> None:
             json.dumps(answer_data),
         ),
     )
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def progress_counts(user_id: int | str) -> dict[str, tuple[int, bool]]:

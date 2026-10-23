@@ -73,7 +73,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     from .auth import bp as auth_bp
     from .routes import bp as main_bp
+    from .offline import bp as offline_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(offline_bp)
     return app

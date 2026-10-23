@@ -10,6 +10,14 @@
   <div class="score"><strong id="solved-count">{{ solved_count }}</strong><span>/ {{ quiz.total_players }} found</span></div>
 </section>
 <section class="game-controls">
+  {% if offline_mode %}
+  <p>Saved on this device. Bookmark this page to reopen it without internet.</p>
+  <a class="text-button" id="return-online" href="{{ url_for('main.quiz_page', quiz_id=quiz.quiz_id) }}">Return to online play (internet required)</a>
+  {% else %}
+  <button class="button" type="button" id="play-offline">Play offline</button>
+  <p>Optional: download this game for up to eight hours. Answers will be stored on this device.</p>
+  {% endif %}
+  <p id="offline-status" role="status" aria-live="polite"></p>
   <form class="guess-form" id="guess-form">
     <div class="guess-label-row">
       <label for="guess-input">Name a player</label>
@@ -52,7 +60,12 @@
     <div class="dialog-content-body">
       <p>Name the footballers who have played for both of the (men's) teams listed. You can request clues for individual answers, or for all.</p>
       <p>If you're unsure of the spelling, click 'Guess' and close attempts will be treated as correct answers.</p>
-      <p>Please note that Apps/Goals stats may include U21 figures. Work is underwayto fix this ASAP.</p>
+      <p>Each quiz will only award correct answers for players who played for both clubs from the 1999/2000 season onwards. If a player played for one club before 99/00 and one club after, they will not be counted.</p>
+      <p>When sharing the game with others, you will be awarded a:</p>
+      <p>🟢 for a correct answer found using no clues</p>
+      <p>🟡 where you've used one clue</p>
+      <p>🟠 where you've used two or more clues</p>
+      <p>❌ indicates an answer not found</p>
     </div>
     <div class="dialog-actions-single">
       <button class="button" value="cancel">Got it</button>
@@ -73,6 +86,7 @@
   </form>
 </dialog>
 <script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team, "completed": completed, "givenUp": given_up, "shareText": share_text, "solvedCount": solved_count, "totalPlayers": quiz.total_players, "adsEnabled": ads_enabled, "nationalityPlayerIndices": nationality_player_indices}|tojson }}</script>
+{% if offline_package %}<script type="application/json" id="offline-package">{{ offline_package|tojson }}</script>{% endif %}
 {% if ads_enabled %}<script type="application/json" id="ads-config">{{ {"provider": "adsense" if adsense_client_id else "simulated"}|tojson }}</script>{% endif %}
 {% endblock %}
-{% block scripts %}{% if ads_enabled %}{% if adsense_client_id %}<script async {% if adsense_test_mode %}data-adbreak-test="on" {% endif %}src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ adsense_client_id|urlencode }}" crossorigin="anonymous"></script>{% endif %}<script src="{{ url_for('static', filename='js/ads.js') }}"></script>{% endif %}<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>{% endblock %}
+{% block scripts %}{% if ads_enabled and not offline_mode %}{% if adsense_client_id %}<script async {% if adsense_test_mode %}data-adbreak-test="on" {% endif %}src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ adsense_client_id|urlencode }}" crossorigin="anonymous"></script>{% endif %}<script src="{{ url_for('static', filename='js/ads.js') }}"></script>{% endif %}<script src="{{ url_for('static', filename='js/offline-game.js') }}"></script><script src="{{ url_for('static', filename='js/offline-quiz.js') }}"></script><script src="{{ url_for('static', filename='js/quiz.js') }}"></script>{% endblock %}

@@ -26,6 +26,22 @@ Different known IDs never match. A known ID never matches a blank ID. Where **bo
 
 After uploading updated spreadsheets to PythonAnywhere, reload the web app. Startup fingerprints each quiz's ordered answer list and automatically clears registered-user and guest progress only for changed quizzes, leaving unchanged quizzes' progress intact. The bundled `app/legacy_quiz_answers.json` contains fingerprints from the committed pre-PlayerId spreadsheets for the first migration; keep it with the deployed app. This reset also clears scores and revealed clues for those changed quizzes.
 
+## Optional offline play
+
+Normal games still check guesses online. To prepare a game for a journey:
+
+1. Open a playable quiz while connected and select **Play offline**.
+2. Wait for the download to finish and the saved game to open.
+3. Bookmark that saved game's URL. Reopen that exact link in the same browser to resume without Wi-Fi or mobile data; the home page and other games are not downloaded.
+
+The downloaded game checks exact, correct/typo, close and incorrect guesses on the device. Progress survives refreshing or closing the tab. It lasts **eight hours from download, or until the game's existing closing time, whichever is sooner**. Reopening or resetting does not extend the download. Ordinary clues, give-up, reset and result sharing work offline; ad-gated clues require returning to online play. Sharing through another app may itself need a connection.
+
+While a saved game is open, progress and scores sync automatically when connectivity returns. Pending actions also sync on the next online visit to any app page, including after offline access expires. Keep the browser data and reconnect within **seven days of downloading**. The server rechecks the recorded actions using the normal scoring rules; retries cannot award duplicate points. Wait for the synced message before switching to online play. If progress has changed on another page/device, the answers have changed, or the account differs, the app reports the conflict and keeps the offline progress locally rather than overwriting server progress. Guest downloads must sync in the same guest browser session; sign in before downloading if account scores are wanted.
+
+Offline play requires HTTPS (localhost is allowed for development), service workers, IndexedDB and browser storage permission. Downloads belong to the browser/profile, not every device using the same account. Private browsing, clearing site data or browser storage eviction can remove them. Answers are downloaded in readable form, so offline play is not suitable for tamper-proof competitions; use caution on shared devices. Expiry prevents further play, but physical cleanup is lazy: stored answer data is pruned on the next app visit, and expired cached pages on the next saved-link visit or download. No background deletion runs while the browser is closed.
+
+For PythonAnywhere, deploy the updated Python, templates and static files together and reload the web app. The database table is created automatically at startup; there are no new dependencies, scheduled tasks or push-notification permissions needed for offline play. Keep a stable, private production `SECRET_KEY` so existing downloads can sync. Ensure `/service-worker.js` is served by Flask at the site root with its existing scope and no-cache headers, rather than a long-lived static mapping. The worker continues to handle daily push notifications independently.
+
 ## Browser game notifications
 
 Users can opt in from their profile. At 7:30am UK time, the daily task sends a browser push only when that user's supported team has a playable fixture dated that UK day. Users set to Neutral, fixtures with no shared players, and fixtures that are not playable are skipped. Clicking the notification opens that fixture.

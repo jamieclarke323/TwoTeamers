@@ -1,4 +1,12 @@
-(() => {
+(async () => {
+  if (window.OfflineQuiz) {
+    try {
+      await window.OfflineQuiz.ready;
+    } catch (error) {
+      console.error("Could not open the saved offline game.", error);
+      return;
+    }
+  }
   const data = JSON.parse(document.getElementById("quiz-data").textContent);
   const input = document.getElementById("guess-input");
   const form = document.getElementById("guess-form");
@@ -19,8 +27,13 @@
   const shareDismissedKey = `share-prompt-dismissed-${data.quizId}`;
 
   const request = async (path, body) => {
-    const response = await fetch(`/quiz/${data.quizId}/${path}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
-    return response.json();
+    try {
+      if (window.OfflineQuiz) return await window.OfflineQuiz.request(path, body);
+      const response = await fetch(`/quiz/${data.quizId}/${path}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+      return await response.json();
+    } catch (error) {
+      return {status: "error", message: window.OfflineQuiz ? error.message : "Could not connect. Reconnect to continue, or download a game using Play offline while online."};
+    }
   };
   const card = (index) => document.querySelector(`.player-card[data-index="${index}"]`);
   const fillCard = (player) => {
@@ -121,6 +134,7 @@
     event.preventDefault(); const types = [...dialog.querySelectorAll(".clue-options input:checked")].map((item) => item.value); if (!types.length) return;
     const result = await request("clue", {types, index: clueTarget});
     if (result.status === "ad_required") { setCluesLocked(true); return; }
+    if (result.status === "error") { feedback.textContent = result.message; return; }
     result.clues?.forEach((entry) => { const holder = card(entry.index).querySelector(".clue-holder"); holder.innerHTML = Object.keys(clueLabels).filter((type) => type in entry).map((type) => `<span><strong>${clueLabels[type]}:</strong> ${escapeHtml(entry[type])}</span>`).join(""); });
     if (data.adsEnabled) setCluesLocked(true);
     dialog.close();
@@ -152,6 +166,7 @@
   document.getElementById("give-up").addEventListener("click", async () => {
     if (!confirm("Reveal every answer and end this game?")) return;
     const result = await request("giveup", {confirm: true});
+    if (result.status !== "given_up") { feedback.textContent = result.message || "Could not end this game."; return; }
     result.players?.forEach(fillCard);
     if (result.solved_count !== undefined) currentSolved = Number(result.solved_count);
     if (result.total) totalCount = Number(result.total);
@@ -168,7 +183,13 @@
     shareDialog.close();
   });
   shareAgainButton.addEventListener("click", () => showSharePrompt(shareText, true));
-  document.getElementById("reset").addEventListener("click", async () => { if (confirm("Clear your progress for this game?")) { await request("reset", {confirm: true}); location.reload(); } });
+  document.getElementById("reset").addEventListener("click", async () => {
+    if (confirm("Clear your progress for this game?")) {
+      const result = await request("reset", {confirm: true});
+      if (result.status === "reset") location.reload();
+      else feedback.textContent = result.message || "Could not reset this game.";
+    }
+  });
 
   const howToPlayBtn = document.getElementById("how-to-play-btn");
   const howToPlayDialog = document.getElementById("how-to-play-dialog");

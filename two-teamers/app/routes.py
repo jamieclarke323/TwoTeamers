@@ -11,7 +11,7 @@ from .badges import BADGE_FILES
 from .data_loader import FEATURED_UNLOCK, QUIZ_TIMEZONE, _shared_players, slugify
 from .db import get_db, get_progress, progress_counts, save_progress
 from .leaderboard import calculate_standings, fan_standing
-from .matching import MatchResult, match_guess
+from .gameplay import answer_data as _answer_data, apply_action, public_player as _public_player, share_result_text as _share_result_text
 
 bp = Blueprint("main", __name__)
 
@@ -68,15 +68,6 @@ def _progress_identity() -> int | str:
         session["visitor_id"] = visitor_id
     session.permanent = True
     return visitor_id
-
-
-def _public_player(quiz, player, index):
-    return {
-        "index": index, "name": player.name,
-        "home_team": quiz.home_team, "away_team": quiz.away_team,
-        "home_years": player.home.years, "home_apps": player.home.apps, "home_goals": player.home.goals,
-        "away_years": player.away.years, "away_apps": player.away.apps, "away_goals": player.away.goals,
-    }
 
 
 def _fixture_view(quiz, counts):
@@ -297,13 +288,13 @@ def quiz_page(quiz_id):
     return _render_quiz(quiz)
 
 
-def _render_quiz(quiz, is_home_game: bool = False):
+def _render_quiz(quiz, is_home_game: bool = False, offline_package=None):
     if quiz.total_players == 0:
         return render_template("locked.html", quiz=quiz, status="no_answers", hide_featured_banner=True)
     status = _availability(quiz)
     if status != "playable":
         return render_template("locked.html", quiz=quiz, status=status, hide_featured_banner=True)
-    state = get_progress(_progress_identity(), quiz.quiz_id)
+    state = offline_package["state"] if offline_package is not None else get_progress(_progress_identity(), quiz.quiz_id)
     solved = set(state["solved"])
     saved_clues = _answer_data(state)["clues"]
     clue_labels = {"years": "Years", "initials": "Initials", "nationality": "Nationality"}
@@ -334,6 +325,8 @@ def _render_quiz(quiz, is_home_game: bool = False):
         adsense_test_mode=current_app.config["ADSENSE_TEST_MODE"],
         hide_featured_banner=True,
         is_home_game=is_home_game,
+        offline_package=offline_package,
+        offline_mode=offline_package is not None,
     )
 
 
@@ -354,153 +347,36 @@ def _guard_quiz(quiz_id):
     return quiz, None
 
 
-def _start_score(state, quiz):
-    if not state["score_started"]:
-        state["score_started"] = True
-        state["score_total"] = quiz.total_players
-
-
-def _answer_data(state):
-    data = state.setdefault("answer_data", {})
-    data.setdefault("clues", {})
-    data.setdefault("solve_order", [])
-    return data
-
-
-def _share_result_text(quiz, state):
-    solved = set(state["solved"])
-    answer_data = _answer_data(state)
-    clue_counts = answer_data["clues"]
-    symbols = []
-    for index in range(quiz.total_players):
-        if index not in solved:
-            symbols.append("❌")
-            continue
-        count = len(clue_counts.get(str(index), []))
-        symbols.append("🟢" if count == 0 else "🟡" if count == 1 else "🟠")
-
-    return "\n".join(
-        (
-            f"TWO TEAMERS {len(solved)}/{quiz.total_players}",
-            f"{quiz.home_team} vs {quiz.away_team}",
-            " ".join(symbols),
-            "twoteamers.com",
-        )
-    )
-
-
-def _guess_response(quiz, exact_only=False):
+def _action_response(quiz, action):
     identity = _progress_identity()
-    state = get_progress(identity, quiz.quiz_id)
-    solved = set(state["solved"])
-    guess = str((request.get_json(silent=True) or {}).get("guess", "")).strip()
-    outcome = match_guess(guess, quiz.players, solved)
-    if exact_only and outcome.result != MatchResult.EXACT:
-        return jsonify({"status": "not_exact"})
-    _start_score(state, quiz)
-    if outcome.result in (MatchResult.EXACT, MatchResult.CORRECT):
-        answer_index = outcome.player_index
-        solved.add(answer_index)
-        state["solved"] = sorted(solved)
-        answer_data = _answer_data(state)
-        answer_data["solve_order"].append(
-            {
-                "index": answer_index,
-                "clue_count": len(answer_data["clues"].get(str(answer_index), [])),
-            }
+    db = get_db()
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        state = get_progress(identity, quiz.quiz_id)
+        result, status = apply_action(
+            quiz, state, action, request.get_json(silent=True) or {}, _rewarded_ads_enabled()
         )
-        if not state["score_frozen"]:
-            state["score_correct"] += 1
-            if state["score_correct"] >= state["score_total"]:
-                state["score_frozen"] = True
-        save_progress(identity, quiz.quiz_id, state)
-        player = quiz.players[outcome.player_index]
-        completed = len(solved) == quiz.total_players
-        response = {
-            "status": "correct",
-            "message": "Correct!",
-            "player": _public_player(quiz, player, answer_index),
-            "solved_count": len(solved),
-            "total": quiz.total_players,
-            "completed": completed,
-        }
-        if completed:
-            response["share_text"] = _share_result_text(quiz, state)
-        return jsonify(response)
-    if outcome.result == MatchResult.NEAR:
-        save_progress(identity, quiz.quiz_id, state)
-        return jsonify({"status": "near", "message": "Close but not quite.", "score": outcome.score})
-    save_progress(identity, quiz.quiz_id, state)
-    return jsonify({"status": "wrong", "message": "Not a match. Keep trying."})
+        if status == 200 and result["status"] != "not_exact":
+            save_progress(identity, quiz.quiz_id, state, commit=False)
+    return jsonify(result), status
 
 
 @bp.post("/quiz/<quiz_id>/guess")
 def submit_guess(quiz_id):
     quiz, error = _guard_quiz(quiz_id)
-    return error or _guess_response(quiz)
+    return error or _action_response(quiz, "guess")
 
 
 @bp.post("/quiz/<quiz_id>/exact")
 def submit_exact_guess(quiz_id):
     quiz, error = _guard_quiz(quiz_id)
-    return error or _guess_response(quiz, exact_only=True)
+    return error or _action_response(quiz, "exact")
 
 
 @bp.post("/quiz/<quiz_id>/clue")
 def request_clue(quiz_id):
     quiz, error = _guard_quiz(quiz_id)
-    if error:
-        return error
-    data = request.get_json(silent=True) or {}
-    types = [
-        value
-        for value in data.get("types", [])
-        if value in ("years", "initials", "nationality")
-    ]
-    if not types:
-        return jsonify({"status": "error", "message": "Choose at least one clue."}), 400
-    identity = _progress_identity()
-    state = get_progress(identity, quiz_id)
-    answer_data = _answer_data(state)
-    if _rewarded_ads_enabled():
-        if not answer_data.get("clue_unlocked"):
-            return jsonify({"status": "ad_required", "message": "Watch an ad to unlock clues!"}), 403
-        # Each watched ad pays for one clue reveal.
-        answer_data["clue_unlocked"] = False
-    _start_score(state, quiz)
-    state["score_frozen"] = True
-    solved = set(state["solved"])
-    target = data.get("index")
-    indices = range(len(quiz.players)) if target in (None, "all") else [int(target)]
-    indices = [
-        index for index in indices
-        if 0 <= index < len(quiz.players)
-        and (index not in solved)
-    ]
-    if "nationality" in types and not any(quiz.players[index].has_nationality for index in indices):
-        types.remove("nationality")
-    if not types:
-        return jsonify({"status": "error", "message": "That clue is not available."}), 400
-    clues = []
-    for index in indices:
-        player_clues = answer_data["clues"].setdefault(str(index), [])
-        for clue_type in types:
-            if clue_type == "nationality" and not quiz.players[index].has_nationality:
-                continue
-            if clue_type not in player_clues:
-                player_clues.append(clue_type)
-        player = quiz.players[index]
-        clues.append({
-            "index": index,
-            **{
-                kind: player.clue_value(kind, quiz.home_team, quiz.away_team)
-                for kind in player_clues
-                if kind in ("years", "initials", "nationality")
-                and (kind != "nationality" or player.has_nationality)
-            },
-        })
-    save_progress(identity, quiz_id, state)
-    return jsonify({"status": "ok", "clues": clues})
+    return error or _action_response(quiz, "clue")
 
 
 @bp.post("/quiz/<quiz_id>/clue-unlock")
@@ -512,45 +388,22 @@ def unlock_clues(quiz_id):
     if not _rewarded_ads_enabled():
         return jsonify({"status": "unlocked"})
     identity = _progress_identity()
-    state = get_progress(identity, quiz.quiz_id)
-    _answer_data(state)["clue_unlocked"] = True
-    save_progress(identity, quiz.quiz_id, state)
+    db = get_db()
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        state = get_progress(identity, quiz.quiz_id)
+        _answer_data(state)["clue_unlocked"] = True
+        save_progress(identity, quiz.quiz_id, state, commit=False)
     return jsonify({"status": "unlocked"})
 
 
 @bp.post("/quiz/<quiz_id>/giveup")
 def give_up(quiz_id):
     quiz, error = _guard_quiz(quiz_id)
-    if error:
-        return error
-    if not (request.get_json(silent=True) or {}).get("confirm"):
-        return jsonify({"status": "error"}), 400
-    identity = _progress_identity()
-    state = get_progress(identity, quiz_id)
-    _start_score(state, quiz)
-    state["score_frozen"] = True
-    state["given_up"] = True
-    save_progress(identity, quiz_id, state)
-    return jsonify({
-        "status": "given_up",
-        "players": [_public_player(quiz, player, index) for index, player in enumerate(quiz.players)],
-        "total": quiz.total_players,
-        "solved_count": len(state["solved"]),
-        "share_text": _share_result_text(quiz, state),
-    })
+    return error or _action_response(quiz, "giveup")
 
 
 @bp.post("/quiz/<quiz_id>/reset")
 def reset_quiz(quiz_id):
     quiz, error = _guard_quiz(quiz_id)
-    if error:
-        return error
-    identity = _progress_identity()
-    state = get_progress(identity, quiz_id)
-    if state["score_started"]:
-        state["score_frozen"] = True
-    state["solved"] = []
-    state["given_up"] = False
-    state["answer_data"] = {"clues": {}, "solve_order": []}
-    save_progress(identity, quiz_id, state)
-    return jsonify({"status": "reset"})
+    return error or _action_response(quiz, "reset")
