@@ -141,7 +141,8 @@ def test_champions_league_wildcard_available_in_featured_quizzes(app):
     )
     assert atletico_quiz is not None
     assert {player.name for player in atletico_quiz.players} == {
-        "Matheus Cunha", "Radamel Falcao", "David de Gea",
+        "Matheus Cunha", "Radamel Falcao", "Diego Forlán",
+        "David de Gea", "Memphis", "Sergio Reguilón",
     }
 
 

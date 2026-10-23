@@ -306,7 +306,7 @@ def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
     nationality_column: int | None = 6
     player_id_column: int | None = None
     found_header = False
-    for raw_row in sheet.iter_rows(values_only=True):
+    for raw_row in sheet.iter_rows(max_col=8, values_only=True):
         row = tuple(raw_row) + (None,) * max(0, 7 - len(raw_row))
         name = str(row[0] or "").strip()
         years = row[1]

@@ -95,6 +95,60 @@ def test_stats_read_id_from_header_not_nationality_column():
     workbook.close()
 
 
+def test_stats_ignore_duplicate_headers_and_data_after_column_h():
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append([
+        "Player", "Years", "Apps", "Min", "Goals", "Ast", "Nationality", "PlayerId",
+        "Player", "PlayerId", "Nationality",
+    ])
+    sheet.append([
+        "Lee Grant", "2018-2021", 4, 321, 0, 0, "England", "9dab6e3b",
+        "David de Gea", "7ba6d84e", "Spain",
+    ])
+    records, ambiguous = _stats_players(sheet)
+    assert not ambiguous
+    assert len(records) == 1
+    player = records["id:9dab6e3b"]
+    assert player.name == "Lee Grant"
+    assert player.nationality == "England"
+    assert player.player_id == "9dab6e3b"
+    workbook.close()
+
+
+def test_manchester_united_atletico_answers_have_correct_names_and_ids():
+    rosters = load_club_players(
+        ROOT / "Two Teamers - PremierLeague.xlsx", {"Manchester United"}
+    )
+    rosters.update(load_club_players(
+        ROOT / "Two Teamers - Champions League.xlsx", {"Atletico Madrid"}
+    ))
+    expected = {
+        "Matheus Cunha": "dc62b55d",
+        "Radamel Falcao": "66116290",
+        "Diego Forlán": "d87d0dfc",
+        "David de Gea": "7ba6d84e",
+        "Memphis": "8f696594",
+        "Sergio Reguilón": "3353737a",
+    }
+    grant = next(
+        player for player in rosters["Manchester United"].values() if player.name == "Lee Grant"
+    )
+    assert grant.player_id == "9dab6e3b"
+    for home, away in (
+        ("Manchester United", "Atletico Madrid"),
+        ("Atletico Madrid", "Manchester United"),
+    ):
+        players = _shared_players(rosters, home, away)
+        assert {player.name: player.home.player_id for player in players} == expected
+        assert len(players) == len(expected)
+        for player in players:
+            assert player.home.player_id == player.away.player_id == expected[player.name]
+            assert player.home.name == player.away.name == player.name
+        assert match_guess("Lee Grant", players, set()).result == MatchResult.WRONG
+        assert match_guess("Eric Djemba-Djemba", players, set()).result == MatchResult.WRONG
+
+
 def test_identified_pre_cutoff_namesake_is_not_added(tmp_path):
     workbook = Workbook()
     sheet = workbook.active

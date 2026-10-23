@@ -18,7 +18,9 @@ Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `D
 
 The paired club stats tabs use `PlayerId` as the player's identity across all five player workbooks. Keep these IDs as text (including leading zeroes), use the same ID for the same person at every club, and different IDs for different people even if their names are identical.
 
-The existing stats columns remain Player, Years/Yrs, Apps/MP, Min, Goals/Gls and Ast. Optional `Nationality` and `PlayerId` columns are located by their headers: for example, PlayerId can be in column H after Nationality or column G when Nationality is absent. Both `ClubStats` and `Club Stats` tab names are supported. The season tabs continue to determine club membership and the 1999-2000 eligibility cutoff; identified stats records must also have eligible years so an older namesake is not included.
+Only columns A–H of stats tabs are read. The existing stats columns remain Player, Years/Yrs, Apps/MP, Min, Goals/Gls and Ast. Optional `Nationality` and `PlayerId` columns are located by their headers within A–H: for example, PlayerId can be in column H after Nationality or column G when Nationality is absent. Columns I onward are ignored, including duplicate headers. Both `ClubStats` and `Club Stats` tab names are supported. The season tabs continue to determine club membership and the 1999-2000 eligibility cutoff; identified stats records must also have eligible years so an older namesake is not included.
+
+The reader uses saved cell values; it does not calculate spreadsheet formulas. If IDs are formulas, recalculate and save the workbook before uploading, or export A–H as values.
 
 Different known IDs never match. A known ID never matches a blank ID. Where **both** club records lack IDs, the previous normalized-name matching remains available; ambiguous duplicates without IDs remain excluded. Complete missing IDs on both sides to recover legitimate answers that cannot currently be linked. Player names remain the answers users type, including either club's display name for an ID match.
 
