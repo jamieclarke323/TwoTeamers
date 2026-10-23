@@ -142,7 +142,7 @@
       card.classList.toggle("revealed", revealed);
       card.disabled = found;
       if (found) {
-        card.innerHTML = `<strong>${revealed ? "❌ " : ""}${escape(player.name)}</strong><span>${escape(pack.home)}: ${escape(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escape(pack.away)}: ${escape(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
+        card.innerHTML = `<strong>${escape(player.name)}</strong><span>${escape(pack.home)}: ${escape(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escape(pack.away)}: ${escape(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
       } else {
         const clues = saved.state.answer_data.clues[String(player.index)] || [];
         card.innerHTML = `<span class="card-number">${player.index + 1}</span><strong>Unknown player</strong><span class="clue-holder">${

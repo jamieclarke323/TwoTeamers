@@ -368,7 +368,8 @@ def test_individual_giveup_keeps_remaining_scoring_and_shares_cross(offline_app,
     assert repeated.status_code == 200
     assert _state(offline_app, offline_client) == state
     page = offline_client.get(url).get_data(as_text=True)
-    assert "❌ Jóhann Berg Guðmundsson" in page
+    assert "<strong>Jóhann Berg Guðmundsson</strong>" in page
+    assert "❌ Jóhann Berg Guðmundsson" not in page
     assert 'id="give-up-answer"' in page
     assert offline_client.post(f"{url}/guess", json={"guess": "Guðmundsson"}).json["status"] == "wrong"
     final = offline_client.post(f"{url}/guess", json={"guess": "Aanholt"}).json
@@ -454,7 +455,8 @@ def test_offline_refresh_uses_current_template_without_extending_download(offlin
     assert refreshed["package"]["state"]["answer_data"]["revealed"] == [0]
     assert "<small>1999/2000 season onwards only.</small>" in refreshed["html"]
     assert 'id="give-up-answer"' in refreshed["html"]
-    assert "❌ Jóhann Berg Guðmundsson" in refreshed["html"]
+    assert "<strong>Jóhann Berg Guðmundsson</strong>" in refreshed["html"]
+    assert "❌ Jóhann Berg Guðmundsson" not in refreshed["html"]
     with offline_app.app_context():
         assert get_db().execute("SELECT COUNT(*) FROM offline_sessions").fetchone()[0] == 1
 
