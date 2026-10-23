@@ -199,7 +199,7 @@
     if (!confirm("Reveal every answer and end this game?")) return;
     const result = await request("giveup", {confirm: true});
     if (result.status !== "given_up") { feedback.textContent = result.message || "Could not end this game."; return; }
-    result.players?.forEach((player) => fillCard(player));
+    result.players?.forEach((player) => fillCard(player, !card(player.index).classList.contains("found")));
     if (result.solved_count !== undefined) currentSolved = Number(result.solved_count);
     if (result.total) totalCount = Number(result.total);
     input.disabled = true;

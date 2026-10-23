@@ -499,3 +499,32 @@ def test_clue_then_giveup_keeps_cross_instead_of_clue_colour(offline_client):
     offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})
     final = offline_client.post(f"{url}/guess", json={"guess": "Aanholt"}).json
     assert "❌ 🟢" in final["share_text"]
+
+
+@pytest.mark.parametrize("guess_first", [False, True])
+def test_whole_quiz_giveup_marks_only_unguessed_cards_as_revealed(offline_client, guess_first):
+    from html.parser import HTMLParser
+
+    class Cards(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.classes = {}
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == "button" and "data-index" in attrs:
+                self.classes[int(attrs["data-index"])] = attrs["class"].split()
+
+    if guess_first:
+        offline_client.post("/quiz/offline-test/guess", json={"guess": "Aanholt"})
+    offline_client.post("/quiz/offline-test/giveup", json={"confirm": True})
+    pages = [
+        offline_client.get("/quiz/offline-test").get_data(as_text=True),
+        _download(offline_client)["html"],
+    ]
+    for page in pages:
+        cards = Cards()
+        cards.feed(page)
+        assert "revealed" in cards.classes[0]
+        assert ("revealed" in cards.classes[1]) is not guess_first
+        assert all("found" in classes for classes in cards.classes.values())

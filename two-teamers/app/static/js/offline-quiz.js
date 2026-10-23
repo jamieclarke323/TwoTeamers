@@ -135,7 +135,8 @@
     const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality"};
     for (const player of pack.players) {
       const card = document.querySelector(`.player-card[data-index="${player.index}"]`);
-      const revealed = (saved.state.answer_data.revealed || []).includes(player.index);
+      const revealed = (saved.state.answer_data.revealed || []).includes(player.index)
+        || (saved.state.given_up && !saved.state.solved.includes(player.index));
       const found = saved.state.solved.includes(player.index) || revealed || saved.state.given_up;
       card.classList.toggle("found", found);
       card.classList.toggle("revealed", revealed);

@@ -30,7 +30,7 @@ After uploading updated spreadsheets to PythonAnywhere, reload the web app. Star
 
 Select an unknown player card and choose **Give up on this answer**, alongside the clue options. A confirmation warning appears before revealing the player. The answer stays visible after reloading, is not counted as found, cannot earn points on a later guess, and appears as **❌** in shared results. You can still score for the remaining players; existing clue and reset scoring rules are unchanged. Once every answer has been guessed or revealed, the game finishes and offers result sharing using only the number actually found.
 
-This works online and offline, without watching an ad. The existing **Give up** button still reveals all remaining answers and ends the game. Reset clears individually revealed answers too.
+This works online and offline, without watching an ad. The existing **Give up** button still reveals all remaining answers and ends the game. Revealed, unguessed cards have a light-red background and dark-red trim; correctly guessed cards stay lime. Reset clears individually revealed answers too.
 
 ## Optional offline play
 

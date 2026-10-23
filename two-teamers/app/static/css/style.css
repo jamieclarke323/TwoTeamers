@@ -38,5 +38,5 @@
 .dialog-actions-single{margin-top:24px;display:flex;justify-content:flex-end}
 .report-link-row{text-align:center;margin:32px 0 0}
 .guess-form .offline-button{margin-top:8px;padding:6px 10px;font-size:.78rem}
-.player-card.revealed{border-color:var(--red)}
+.player-card.revealed{border-color:var(--red);background:#f9d9d5}
 #give-up-answer:not([hidden]){display:block;margin-top:16px}

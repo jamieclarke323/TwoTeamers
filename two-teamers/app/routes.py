@@ -305,7 +305,7 @@ def _render_quiz(quiz, is_home_game: bool = False, offline_package=None):
     clue_labels = {"years": "Years", "initials": "Initials", "nationality": "Nationality"}
     players = [
         {"found": index in visible or state["given_up"],
-         "revealed": index in revealed,
+         "revealed": index in revealed or (state["given_up"] and index not in solved),
          "clues": [(clue_labels[kind], player.clue_value(kind, quiz.home_team, quiz.away_team))
                    for kind in saved_clues.get(str(index), [])
                    if kind in clue_labels and (kind != "nationality" or player.has_nationality)],
