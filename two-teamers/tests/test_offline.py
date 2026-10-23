@@ -348,3 +348,154 @@ def test_online_and_offline_sequences_produce_identical_progress(offline_app, of
         for index, (action, body) in enumerate(actions, start=1)
     ]).status_code == 200
     assert _state(offline_app, online) == _state(offline_app, offline_client)
+
+
+def test_individual_giveup_keeps_remaining_scoring_and_shares_cross(offline_app, offline_client):
+    url = "/quiz/offline-test"
+    result = offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})
+    assert result.status_code == 200
+    assert result.json["status"] == "answer_revealed"
+    assert result.json["player"]["name"] == "Jóhann Berg Guðmundsson"
+    assert result.json["solved_count"] == 0
+    assert result.json["completed"] is False
+    state = _state(offline_app, offline_client)
+    assert state["answer_data"]["revealed"] == [0]
+    assert state["score_correct"] == 0
+    assert state["score_started"] is True
+    assert state["score_frozen"] is False
+    assert state["given_up"] is False
+    repeated = offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})
+    assert repeated.status_code == 200
+    assert _state(offline_app, offline_client) == state
+    page = offline_client.get(url).get_data(as_text=True)
+    assert "❌ Jóhann Berg Guðmundsson" in page
+    assert 'id="give-up-answer"' in page
+    assert offline_client.post(f"{url}/guess", json={"guess": "Guðmundsson"}).json["status"] == "wrong"
+    final = offline_client.post(f"{url}/guess", json={"guess": "Aanholt"}).json
+    assert final["completed"] is True
+    assert final["solved_count"] == 1
+    assert "TWO TEAMERS 1/2" in final["share_text"]
+    assert "❌ 🟢" in final["share_text"]
+    state = _state(offline_app, offline_client)
+    assert state["solved"] == [1]
+    assert state["score_correct"] == 1
+    assert state["score_frozen"] is True
+    page = offline_client.get(url).get_data(as_text=True)
+    assert 'id="guess-input" type="text" placeholder="Type a surname..." autocomplete="off" disabled' in page
+
+
+def test_individual_giveup_as_last_answer_finishes_game(offline_client):
+    url = "/quiz/offline-test"
+    offline_client.post(f"{url}/guess", json={"guess": "Aanholt"})
+    final = offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True}).json
+    assert final["completed"] is True
+    assert "❌ 🟢" in final["share_text"]
+    assert "TWO TEAMERS 1/2" in final["share_text"]
+
+
+@pytest.mark.parametrize("body", [
+    {"index": 0}, {"index": 0, "confirm": False}, {"index": 0, "confirm": "yes"},
+    {"index": -1, "confirm": True}, {"index": 2, "confirm": True},
+    {"index": True, "confirm": True}, {"index": "0", "confirm": True},
+])
+def test_individual_giveup_requires_valid_index_and_confirmation(offline_app, offline_client, body):
+    assert offline_client.post("/quiz/offline-test/giveup-answer", json=body).status_code == 400
+    assert _state(offline_app, offline_client)["score_started"] is False
+
+
+def test_individual_giveup_does_not_replace_correct_or_globally_revealed_answers(offline_client):
+    url = "/quiz/offline-test"
+    offline_client.post(f"{url}/guess", json={"guess": "Aanholt"})
+    assert offline_client.post(f"{url}/giveup-answer", json={"index": 1, "confirm": True}).status_code == 409
+    offline_client.post(f"{url}/giveup", json={"confirm": True})
+    assert offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True}).status_code == 409
+
+
+def test_revealed_answers_are_excluded_from_clues_and_reset_clears_them(offline_app, offline_client):
+    url = "/quiz/offline-test"
+    offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})
+    clues = offline_client.post(f"{url}/clue", json={"types": ["initials"], "index": "all"}).json
+    assert [clue["index"] for clue in clues["clues"]] == [1]
+    offline_client.post(f"{url}/reset", json={})
+    assert "revealed" not in _state(offline_app, offline_client)["answer_data"]
+    assert offline_client.post(f"{url}/guess", json={"guess": "Guðmundsson"}).json["status"] == "correct"
+    assert _state(offline_app, offline_client)["score_correct"] == 0
+
+
+def test_individual_giveup_works_with_ad_gated_clues_and_syncs(offline_app, offline_client):
+    offline_app.config["REWARDED_ADS_ENABLED"] = True
+    package = _download(offline_client)["package"]
+    actions = [
+        _event(package, 1, "giveup-answer", {"index": 0, "confirm": True}),
+        _event(package, 2, "guess", {"guess": "Aanholt"}),
+    ]
+    response = _sync(offline_client, package, actions)
+    assert response.status_code == 200
+    assert response.json["acknowledged"] == 2
+    assert _sync(offline_client, package, actions).status_code == 200
+    state = _state(offline_app, offline_client)
+    assert state["score_correct"] == 1
+    assert state["solved"] == [1]
+    assert state["answer_data"]["revealed"] == [0]
+
+
+def test_offline_refresh_uses_current_template_without_extending_download(offline_app, offline_client):
+    downloaded = _download(offline_client)
+    package = downloaded["package"]
+    _sync(offline_client, package, [_event(package, 1, "giveup-answer", {"index": 0, "confirm": True})])
+    response = offline_client.post("/quiz/offline-test/offline-refresh", json={"token": package["token"]})
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    refreshed = response.json
+    assert refreshed["url"] == downloaded["url"]
+    assert refreshed["package"]["expiresAt"] == package["expiresAt"]
+    assert refreshed["package"]["issuedAt"] == package["issuedAt"]
+    assert refreshed["package"]["token"] == package["token"]
+    assert refreshed["package"]["state"]["answer_data"]["revealed"] == [0]
+    assert "<small>1999/2000 season onwards only.</small>" in refreshed["html"]
+    assert 'id="give-up-answer"' in refreshed["html"]
+    assert "❌ Jóhann Berg Guðmundsson" in refreshed["html"]
+    with offline_app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM offline_sessions").fetchone()[0] == 1
+
+
+def test_offline_refresh_rejects_other_identity_changed_answers_and_expiry(offline_app, offline_client, monkeypatch):
+    package = _download(offline_client)["package"]
+    path = "/quiz/offline-test/offline-refresh"
+    assert offline_client.post(path, json={}).status_code == 400
+    assert offline_client.post(path, json={"token": "bad"}).status_code == 403
+    assert offline_app.test_client().post(path, json={"token": package["token"]}).status_code == 403
+    quiz = offline_app.config["QUIZZES_BY_ID"]["offline-test"]
+    offline_app.config["QUIZZES_BY_ID"]["offline-test"] = replace(quiz, players=quiz.players[:1])
+    assert offline_client.post(path, json={"token": package["token"]}).status_code == 409
+    offline_app.config["QUIZZES_BY_ID"]["offline-test"] = quiz
+    monkeypatch.setattr("time.time", lambda: package["expiresAt"] / 1000 + 1)
+    assert offline_client.post(path, json={"token": package["token"]}).status_code == 410
+
+
+def test_refresh_refuses_to_replace_progress_changed_online(offline_app, offline_client):
+    package = _download(offline_client)["package"]
+    offline_client.post("/quiz/offline-test/guess", json={"guess": "Aanholt"})
+    response = offline_client.post("/quiz/offline-test/offline-refresh", json={"token": package["token"]})
+    assert response.status_code == 409
+    assert _state(offline_app, offline_client)["solved"] == [1]
+
+
+def test_giving_up_on_every_answer_finishes_with_zero_found(offline_app, offline_client):
+    url = "/quiz/offline-test/giveup-answer"
+    offline_client.post(url, json={"index": 1, "confirm": True})
+    final = offline_client.post(url, json={"index": 0, "confirm": True}).json
+    assert final["completed"] is True
+    assert final["solved_count"] == 0
+    assert "TWO TEAMERS 0/2" in final["share_text"]
+    assert "❌ ❌" in final["share_text"]
+    assert _state(offline_app, offline_client)["score_correct"] == 0
+    assert _state(offline_app, offline_client)["score_frozen"] is True
+
+
+def test_clue_then_giveup_keeps_cross_instead_of_clue_colour(offline_client):
+    url = "/quiz/offline-test"
+    offline_client.post(f"{url}/clue", json={"index": 0, "types": ["initials"]})
+    offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})
+    final = offline_client.post(f"{url}/guess", json={"guess": "Aanholt"}).json
+    assert "❌ 🟢" in final["share_text"]

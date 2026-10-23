@@ -11,7 +11,10 @@ from .badges import BADGE_FILES
 from .data_loader import FEATURED_UNLOCK, QUIZ_TIMEZONE, _shared_players, slugify
 from .db import get_db, get_progress, progress_counts, save_progress
 from .leaderboard import calculate_standings, fan_standing
-from .gameplay import answer_data as _answer_data, apply_action, public_player as _public_player, share_result_text as _share_result_text
+from .gameplay import (
+    answer_data as _answer_data, apply_action, game_completed,
+    public_player as _public_player, revealed_indices, share_result_text as _share_result_text,
+)
 
 bp = Blueprint("main", __name__)
 
@@ -296,17 +299,20 @@ def _render_quiz(quiz, is_home_game: bool = False, offline_package=None):
         return render_template("locked.html", quiz=quiz, status=status, hide_featured_banner=True)
     state = offline_package["state"] if offline_package is not None else get_progress(_progress_identity(), quiz.quiz_id)
     solved = set(state["solved"])
+    revealed = revealed_indices(state)
+    visible = solved | revealed
     saved_clues = _answer_data(state)["clues"]
     clue_labels = {"years": "Years", "initials": "Initials", "nationality": "Nationality"}
     players = [
-        {"found": index in solved or state["given_up"],
+        {"found": index in visible or state["given_up"],
+         "revealed": index in revealed,
          "clues": [(clue_labels[kind], player.clue_value(kind, quiz.home_team, quiz.away_team))
                    for kind in saved_clues.get(str(index), [])
                    if kind in clue_labels and (kind != "nationality" or player.has_nationality)],
-         **(_public_player(quiz, player, index) if index in solved or state["given_up"] else {"index": index})}
+         **(_public_player(quiz, player, index) if index in visible or state["given_up"] else {"index": index})}
         for index, player in enumerate(quiz.players)
     ]
-    completed = len(solved) == quiz.total_players
+    completed = game_completed(quiz, state)
     ads_enabled = _rewarded_ads_enabled()
     return render_template(
         "quiz.html",
@@ -401,6 +407,12 @@ def unlock_clues(quiz_id):
 def give_up(quiz_id):
     quiz, error = _guard_quiz(quiz_id)
     return error or _action_response(quiz, "giveup")
+
+
+@bp.post("/quiz/<quiz_id>/giveup-answer")
+def give_up_answer(quiz_id):
+    quiz, error = _guard_quiz(quiz_id)
+    return error or _action_response(quiz, "giveup-answer")
 
 
 @bp.post("/quiz/<quiz_id>/reset")

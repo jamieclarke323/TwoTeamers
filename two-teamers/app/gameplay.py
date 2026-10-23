@@ -23,6 +23,14 @@ def answer_data(state):
     return data
 
 
+def revealed_indices(state):
+    return set(state.get("answer_data", {}).get("revealed", []))
+
+
+def game_completed(quiz, state):
+    return len(set(state["solved"]) | revealed_indices(state)) == quiz.total_players
+
+
 def share_result_text(quiz, state):
     solved = set(state["solved"])
     clue_counts = answer_data(state)["clues"]
@@ -46,7 +54,7 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
     if action in ("guess", "exact"):
         solved = set(state["solved"])
         guess = str(data.get("guess", "")).strip()
-        outcome = match_guess(guess, quiz.players, solved)
+        outcome = match_guess(guess, quiz.players, solved | revealed_indices(state))
         if action == "exact" and outcome.result != MatchResult.EXACT:
             return {"status": "not_exact"}, 200
         start_score(state, quiz)
@@ -62,7 +70,9 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
                 state["score_correct"] += 1
                 if state["score_correct"] >= state["score_total"]:
                     state["score_frozen"] = True
-            completed = len(solved) == quiz.total_players
+            completed = game_completed(quiz, state)
+            if completed:
+                state["score_frozen"] = True
             result = {
                 "status": "correct", "message": "Correct!",
                 "player": public_player(quiz, quiz.players[index], index),
@@ -91,7 +101,8 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
             indices = range(len(quiz.players)) if target in (None, "all") else [int(target)]
         except (TypeError, ValueError):
             return {"status": "error", "message": "Choose a valid player."}, 400
-        indices = [index for index in indices if 0 <= index < len(quiz.players) and index not in state["solved"]]
+        unavailable = set(state["solved"]) | revealed_indices(state)
+        indices = [index for index in indices if 0 <= index < len(quiz.players) and index not in unavailable]
         if "nationality" in types and not any(quiz.players[index].has_nationality for index in indices):
             types.remove("nationality")
         if not types:
@@ -112,6 +123,30 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
                    and (kind != "nationality" or player.has_nationality)},
             })
         return {"status": "ok", "clues": clues}, 200
+
+    if action == "giveup-answer":
+        index = data.get("index")
+        if data.get("confirm") is not True:
+            return {"status": "error", "message": "Confirm before revealing this answer."}, 400
+        if type(index) is not int or not 0 <= index < quiz.total_players:
+            return {"status": "error", "message": "Choose a valid player."}, 400
+        if index in state["solved"] or state["given_up"]:
+            return {"status": "error", "message": "This answer is already resolved."}, 409
+        start_score(state, quiz)
+        revealed = answer_data(state).setdefault("revealed", [])
+        if index not in revealed:
+            revealed.append(index)
+            revealed.sort()
+        completed = game_completed(quiz, state)
+        if completed:
+            state["score_frozen"] = True
+        result = {
+            "status": "answer_revealed", "player": public_player(quiz, quiz.players[index], index),
+            "solved_count": len(state["solved"]), "total": quiz.total_players, "completed": completed,
+        }
+        if completed:
+            result["share_text"] = share_result_text(quiz, state)
+        return result, 200
 
     if action == "giveup":
         if not data.get("confirm"):

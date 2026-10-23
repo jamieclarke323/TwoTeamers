@@ -51,6 +51,7 @@
     }).join(" "),
     "twoteamers.com",
   ].join("\n");
+  const completed = (pack, state) => new Set([...state.solved, ...(state.answer_data.revealed || [])]).size === pack.players.length;
   const apply = (pack, state, action, body) => {
     const start = () => {
       if (!state.score_started) {
@@ -59,7 +60,7 @@
       }
     };
     if (action === "guess" || action === "exact") {
-      const outcome = match(body.guess || "", pack.players, state.solved, pack.combiningMarks);
+      const outcome = match(body.guess || "", pack.players, [...state.solved, ...(state.answer_data.revealed || [])], pack.combiningMarks);
       if (action === "exact" && outcome.result !== "exact") return {status: "not_exact"};
       start();
       if (outcome.result === "exact" || outcome.result === "correct") {
@@ -73,11 +74,12 @@
           state.score_correct += 1;
           if (state.score_correct >= state.score_total) state.score_frozen = true;
         }
-        const completed = state.solved.length === pack.players.length;
+        const finished = completed(pack, state);
+        if (finished) state.score_frozen = true;
         return {
           status: "correct", message: "Correct!", player: pack.players[index],
-          solved_count: state.solved.length, total: pack.players.length, completed,
-          ...(completed ? {share_text: share(pack, state)} : {}),
+          solved_count: state.solved.length, total: pack.players.length, completed: finished,
+          ...(finished ? {share_text: share(pack, state)} : {}),
         };
       }
       return outcome.result === "near"
@@ -92,7 +94,8 @@
         return {status: "error", message: "Choose a valid player."};
       }
       const indices = pack.players.map((_, index) => index).filter((index) =>
-        !state.solved.includes(index) && (body.index == null || body.index === "all" || index === Number(body.index)));
+        !state.solved.includes(index) && !(state.answer_data.revealed || []).includes(index)
+        && (body.index == null || body.index === "all" || index === Number(body.index)));
       if (types.includes("nationality") && !indices.some((index) => pack.players[index].clues.nationality)) {
         types.splice(types.indexOf("nationality"), 1);
       }
@@ -106,6 +109,25 @@
         }
         return {index, ...Object.fromEntries(saved.map((kind) => [kind, pack.players[index].clues[kind]]))};
       })};
+    }
+    if (action === "giveup-answer") {
+      const index = body.index;
+      if (body.confirm !== true) return {status: "error", message: "Confirm before revealing this answer."};
+      if (!Number.isInteger(index) || index < 0 || index >= pack.players.length) {
+        return {status: "error", message: "Choose a valid player."};
+      }
+      if (state.solved.includes(index) || state.given_up) return {status: "error", message: "This answer is already resolved."};
+      start();
+      const revealed = state.answer_data.revealed ||= [];
+      if (!revealed.includes(index)) revealed.push(index);
+      revealed.sort((a, b) => a - b);
+      const finished = completed(pack, state);
+      if (finished) state.score_frozen = true;
+      return {
+        status: "answer_revealed", player: pack.players[index],
+        solved_count: state.solved.length, total: pack.players.length, completed: finished,
+        ...(finished ? {share_text: share(pack, state)} : {}),
+      };
     }
     if (action === "giveup") {
       if (!body.confirm) return {status: "error"};
@@ -126,5 +148,5 @@
     }
     return {status: "error", message: "This action requires online play."};
   };
-  globalThis.OfflineGame = {normalise, ratio, match, apply, share};
+  globalThis.OfflineGame = {normalise, ratio, match, apply, share, completed};
 })();

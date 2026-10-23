@@ -50,8 +50,18 @@
         const worker = await activateWorker();
         const previous = (await OfflineStorage.all()).filter((saved) => saved.quizId === quizId);
         const playable = previous.find((saved) => Date.now() < saved.expiresAt);
-        const cache = await caches.open("two-teamers-offline-pages-v1");
-        if (playable && await cache.match(savedUrl(playable))) {
+        if (playable) {
+          await syncSavedGame(playable.id);
+          const response = await fetch(`/quiz/${quizId}/offline-refresh`, {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: playable.token}),
+          });
+          const refreshed = await response.json();
+          if (!response.ok) throw new Error(refreshed.message || "Could not refresh this offline game.");
+          await workerMessage(worker, {
+            type: "SAVE_OFFLINE_GAME", url: refreshed.url, html: refreshed.html,
+            expiresAt: refreshed.package.expiresAt, assets: refreshed.assets,
+          });
           location.assign(savedUrl(playable));
           return;
         }
@@ -112,7 +122,7 @@
     pack.state = saved.state;
     const data = JSON.parse(document.getElementById("quiz-data").textContent);
     data.solvedCount = saved.state.solved.length;
-    data.completed = saved.state.solved.length === pack.players.length;
+    data.completed = OfflineGame.completed(pack, saved.state);
     data.givenUp = saved.state.given_up;
     data.shareText = data.completed || data.givenUp ? OfflineGame.share(pack, saved.state) : "";
     document.getElementById("quiz-data").textContent = JSON.stringify(data);
@@ -125,11 +135,13 @@
     const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality"};
     for (const player of pack.players) {
       const card = document.querySelector(`.player-card[data-index="${player.index}"]`);
-      const found = saved.state.solved.includes(player.index) || saved.state.given_up;
+      const revealed = (saved.state.answer_data.revealed || []).includes(player.index);
+      const found = saved.state.solved.includes(player.index) || revealed || saved.state.given_up;
       card.classList.toggle("found", found);
+      card.classList.toggle("revealed", revealed);
       card.disabled = found;
       if (found) {
-        card.innerHTML = `<strong>${escape(player.name)}</strong><span>${escape(pack.home)}: ${escape(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escape(pack.away)}: ${escape(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
+        card.innerHTML = `<strong>${revealed ? "❌ " : ""}${escape(player.name)}</strong><span>${escape(pack.home)}: ${escape(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escape(pack.away)}: ${escape(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
       } else {
         const clues = saved.state.answer_data.clues[String(player.index)] || [];
         card.innerHTML = `<span class="card-number">${player.index + 1}</span><strong>Unknown player</strong><span class="clue-holder">${

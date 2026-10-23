@@ -39,7 +39,7 @@ def _signer():
 
 @bp.post("/quiz/<quiz_id>/offline-package")
 def download_quiz(quiz_id):
-    from .routes import _guard_quiz, _progress_identity, _render_quiz
+    from .routes import _guard_quiz, _progress_identity
 
     quiz, error = _guard_quiz(quiz_id)
     if error:
@@ -59,9 +59,23 @@ def download_quiz(quiz_id):
         "version": _quiz_version(quiz), "issuedAt": issued_at, "expiresAt": expires_at,
         "adsEnabled": current_app.config["REWARDED_ADS_ENABLED"],
     }
+    db = get_db()
+    db.execute("DELETE FROM offline_sessions WHERE created_at < ?", (int(time.time()) - SYNC_MAX_AGE,))
+    db.execute(
+        """INSERT INTO offline_sessions (id, identity, quiz_id, state_hash, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (session_id, owner, quiz_id, _hash(state), int(time.time())),
+    )
+    db.commit()
+    return _download_response(quiz, claims, state, _signer().dumps(claims))
+
+
+def _download_response(quiz, claims, state, token):
+    from .routes import _render_quiz
+
     package = {
-        "id": session_id, "quizId": quiz_id, "home": quiz.home_team, "away": quiz.away_team,
-        "issuedAt": issued_at, "expiresAt": expires_at, "token": _signer().dumps(claims),
+        "id": claims["id"], "quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team,
+        "issuedAt": claims["issuedAt"], "expiresAt": claims["expiresAt"], "token": token,
         "adsEnabled": claims["adsEnabled"], "state": state,
         "combiningMarks": COMBINING_MARKS,
         "players": [
@@ -77,18 +91,10 @@ def download_quiz(quiz_id):
             for index, player in enumerate(quiz.players)
         ],
     }
-    db = get_db()
-    db.execute("DELETE FROM offline_sessions WHERE created_at < ?", (int(time.time()) - SYNC_MAX_AGE,))
-    db.execute(
-        """INSERT INTO offline_sessions (id, identity, quiz_id, state_hash, created_at)
-           VALUES (?, ?, ?, ?, ?)""",
-        (session_id, owner, quiz_id, _hash(state), int(time.time())),
-    )
-    db.commit()
     response = jsonify({
         "package": package,
         "html": _render_quiz(quiz, offline_package=package),
-        "url": url_for("offline.offline_page", quiz_id=quiz_id, download=session_id),
+        "url": url_for("offline.offline_page", quiz_id=quiz.quiz_id, download=claims["id"]),
         "assets": [
             url_for("static", filename=filename) for filename in (
                 "css/style.css", "js/quiz.js", "js/offline-game.js",
@@ -100,6 +106,36 @@ def download_quiz(quiz_id):
     })
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+@bp.post("/quiz/<quiz_id>/offline-refresh")
+def refresh_quiz(quiz_id):
+    from .routes import _guard_quiz, _progress_identity
+
+    quiz, error = _guard_quiz(quiz_id)
+    if error:
+        return error
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get("token"), str):
+        return jsonify({"message": "Invalid offline session."}), 400
+    try:
+        claims = _signer().loads(data["token"], max_age=SYNC_MAX_AGE)
+    except BadSignature:
+        return jsonify({"message": "This offline download is no longer valid."}), 403
+    identity = _progress_identity()
+    if claims["owner"] != f"{type(identity).__name__}:{identity}" or claims["quiz"] != quiz_id:
+        return jsonify({"message": "Use the account that downloaded this game."}), 403
+    if claims["expiresAt"] <= int(time.time() * 1000):
+        return jsonify({"message": "This offline download has expired."}), 410
+    if claims["version"] != _quiz_version(quiz):
+        return jsonify({"message": "This game's answers have changed. Return to online play."}), 409
+    record = get_db().execute("SELECT state_hash FROM offline_sessions WHERE id = ?", (claims["id"],)).fetchone()
+    if record is None:
+        return jsonify({"message": "This offline session is no longer available."}), 410
+    state = get_progress(identity, quiz_id)
+    if record["state_hash"] != _hash(state):
+        return jsonify({"message": "Progress changed online. Continue online; the saved offline game has not been overwritten."}), 409
+    return _download_response(quiz, claims, state, data["token"])
 
 
 @bp.get("/offline/quiz/<quiz_id>")
@@ -153,7 +189,7 @@ def sync_quiz(quiz_id):
                     or at < last_at or at > int(time.time() * 1000) + 60_000):
                 raise ValueError("Offline actions must be ordered and within the downloaded play window.")
             action, body = event.get("action"), event.get("body")
-            if action not in ("guess", "exact", "clue", "giveup", "reset") or not isinstance(body, dict):
+            if action not in ("guess", "exact", "clue", "giveup", "giveup-answer", "reset") or not isinstance(body, dict):
                 raise ValueError("Invalid offline game action.")
             if action in ("guess", "exact") and (
                 not isinstance(body.get("guess"), str) or len(body["guess"]) > 500

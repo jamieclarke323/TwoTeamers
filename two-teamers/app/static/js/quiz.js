@@ -36,10 +36,11 @@
     }
   };
   const card = (index) => document.querySelector(`.player-card[data-index="${index}"]`);
-  const fillCard = (player) => {
+  const fillCard = (player, revealed = false) => {
     const element = card(player.index);
     element.classList.add("found"); element.disabled = true;
-    element.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
+    if (revealed) element.classList.add("revealed");
+    element.innerHTML = `<strong>${element.classList.contains("revealed") ? "❌ " : ""}${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
   };
   const escapeHtml = (value) => { const element = document.createElement("span"); element.textContent = String(value); return element.innerHTML; };
   const updateShareScore = (solved, total) => {
@@ -98,6 +99,15 @@
       feedback.className = "feedback wrong";
     }
   };
+  const finishGame = (result) => {
+    input.disabled = true;
+    form.querySelector("button[type=submit]").disabled = true;
+    document.getElementById("all-clues").disabled = true;
+    document.getElementById("give-up").disabled = true;
+    shareAgainButton.hidden = false;
+    feedback.textContent = currentSolved === totalCount ? "You found every player." : "Every answer is now resolved.";
+    showSharePrompt(result.share_text, false, 2000);
+  };
   const applyGuess = (result) => {
     if (result.status === "correct") {
       fillCard(result.player); input.value = ""; document.getElementById("solved-count").textContent = result.solved_count;
@@ -106,12 +116,7 @@
       toast.classList.add("visible"); setTimeout(() => toast.classList.remove("visible"), 1700);
       feedback.textContent = "";
       if (result.completed) {
-        input.disabled = true; form.querySelector("button").disabled = true;
-        document.getElementById("all-clues").disabled = true;
-        document.getElementById("give-up").disabled = true;
-        shareAgainButton.hidden = false;
-        feedback.textContent = "You found every player.";
-        showSharePrompt(result.share_text, false, 2000);
+        finishGame(result);
       }
     } else if (result.status !== "not_exact") { feedback.textContent = result.message || ""; feedback.className = `feedback ${result.status}`; }
   };
@@ -121,6 +126,8 @@
   });
   form.addEventListener("submit", async (event) => { event.preventDefault(); const guess = input.value.trim(); if (guess) applyGuess(await request("guess", {guess})); });
   const updateNationalityOption = () => {
+    const giveUpAnswer = document.getElementById("give-up-answer");
+    if (giveUpAnswer) giveUpAnswer.hidden = clueTarget === "all";
     const option = document.getElementById("nationality-clue-option");
     if (!option) return;
     const available = data.nationalityPlayerIndices || [];
@@ -130,6 +137,31 @@
   };
   document.getElementById("player-grid").addEventListener("click", (event) => { const target = event.target.closest(".player-card:not(.found)"); if (target) { clueTarget = Number(target.dataset.index); updateNationalityOption(); dialog.showModal(); } });
   document.getElementById("all-clues").addEventListener("click", () => { clueTarget = "all"; updateNationalityOption(); dialog.showModal(); });
+  document.getElementById("give-up-answer")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (clueTarget === "all") return;
+    if (!confirm("Reveal this answer? It will count as not found and show ❌ in your shared result. You can still score for the remaining players.")) return;
+    const button = event.currentTarget;
+    const index = clueTarget;
+    clearTimeout(exactTimer);
+    button.disabled = true;
+    try {
+      const result = await request("giveup-answer", {index, confirm: true});
+      if (result.status !== "answer_revealed") {
+        feedback.textContent = result.message || "Could not reveal this answer.";
+        dialog.close();
+        return;
+      }
+      fillCard(result.player, true);
+      currentSolved = Number(result.solved_count);
+      document.getElementById("solved-count").textContent = currentSolved;
+      feedback.textContent = "Answer revealed. It will show as ❌ in your shared result.";
+      dialog.close();
+      if (result.completed) finishGame(result);
+    } finally {
+      button.disabled = false;
+    }
+  });
   document.getElementById("show-clues").addEventListener("click", async (event) => {
     event.preventDefault(); const types = [...dialog.querySelectorAll(".clue-options input:checked")].map((item) => item.value); if (!types.length) return;
     const result = await request("clue", {types, index: clueTarget});
@@ -167,11 +199,11 @@
     if (!confirm("Reveal every answer and end this game?")) return;
     const result = await request("giveup", {confirm: true});
     if (result.status !== "given_up") { feedback.textContent = result.message || "Could not end this game."; return; }
-    result.players?.forEach(fillCard);
+    result.players?.forEach((player) => fillCard(player));
     if (result.solved_count !== undefined) currentSolved = Number(result.solved_count);
     if (result.total) totalCount = Number(result.total);
     input.disabled = true;
-    form.querySelector("button").disabled = true;
+    form.querySelector("button[type=submit]").disabled = true;
     document.getElementById("all-clues").disabled = true;
     document.getElementById("give-up").disabled = true;
     shareAgainButton.hidden = false;
