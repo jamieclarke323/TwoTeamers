@@ -107,10 +107,9 @@
   const sync = async () => {
     try {
       await syncSavedGame(pack.id);
-      const saved = await OfflineStorage.get(pack.id);
       showStatus(Date.now() < pack.expiresAt
-        ? `Offline mode ready until ${new Date(pack.expiresAt).toLocaleTimeString()}. Progress ${saved?.acknowledged ? "synced" : "saved on this device"}.`
-        : "Offline access has expired. Progress synced; reconnect to download the game again.");
+        ? ""
+        : "Offline access has expired. Reconnect to play online.");
     } catch (error) {
       showStatus(`Progress is saved on this device. ${error.message} Reconnect or reopen this page to retry.`);
     }
@@ -155,7 +154,6 @@
     }
     document.querySelector("#guess-form button[type=submit]").disabled = data.completed || data.givenUp;
     document.getElementById("share-results").hidden = !(data.completed || data.givenUp);
-    showStatus(`Saved for offline play until ${new Date(pack.expiresAt).toLocaleTimeString()}.`);
     if (pack.adsEnabled) {
       document.querySelectorAll("#clue-options input, #show-clues, #watch-ad").forEach((element) => { element.disabled = true; });
       document.getElementById("ad-gate").hidden = false;

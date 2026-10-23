@@ -17,11 +17,11 @@
   <section class="push-settings" aria-labelledby="push-heading">
     <h2 id="push-heading">Game notifications</h2>
     <p>Opt in to a browser notification at 7:30am UK time when your team's game is ready to play.</p>
+    <button class="button" type="button" id="push-toggle" data-public-key="{{ push_public_key }}" {% if not push_notifications_available %}disabled aria-describedby="push-status"{% endif %}>Enable notifications</button>
     {% if push_notifications_available %}
-    <button class="button" type="button" id="push-toggle" data-public-key="{{ push_public_key }}">Enable notifications</button>
     <p id="push-status" role="status" aria-live="polite">{{ 'Notifications are enabled on at least one device.' if has_push_subscriptions else 'Notifications are currently off.' }}</p>
     {% else %}
-    <p>Browser notifications are not configured yet.</p>
+    <p id="push-status" role="status">Notifications are not available yet. The site owner needs to finish notification setup before you can opt in.</p>
     {% endif %}
   </section>
 </div></section>

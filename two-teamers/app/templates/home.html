@@ -22,9 +22,9 @@
       <h2>Your Team</h2><p>Log in to find your team's game.</p><span class="choice-action">Your fixture, ready when you are</span>
     </button>
     {% elif team_quiz %}
-    <a class="home-panel your-team-panel" href="{{ url_for('main.quiz_page', quiz_id=team_quiz.quiz_id) }}">
+    <a class="home-panel your-team-panel{{ ' locked-team-panel' if team_status != 'playable' }}" href="{{ url_for('main.quiz_page', quiz_id=team_quiz.quiz_id) }}">
       <h2>Your Team</h2>{{ matchup(team_quiz) }}
-      {% if team_status == 'playable' %}<span class="choice-action">Play your team's game &rarr;</span>{% else %}<span class="choice-action">Opens {{ team_quiz.unlock_at.strftime('%d %B %Y at %H:%M') }} (UK time)</span>{% endif %}
+      {% if team_status == 'playable' %}<span class="choice-action">Play your team's game &rarr;</span>{% else %}<span class="choice-action"><span aria-hidden="true">&#128274;</span> Locked · Opens {{ team_quiz.unlock_at.strftime('%d %B %Y at %H:%M') }} (UK time)</span>{% endif %}
     </a>
     {% else %}
     <a class="home-panel your-team-panel" href="{{ url_for('auth.profile') }}"><h2>Your Team</h2><p>{{ 'Choose your supported team in your profile.' if g.user.supported_team == 'Neutral' else 'No upcoming fixtures for your team.' }}</p><span class="choice-action">View profile &rarr;</span></a>

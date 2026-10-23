@@ -10,7 +10,9 @@ python3.13 -m venv .venv
 .venv/bin/python run.py
 ```
 
-Open `http://127.0.0.1:5000`. Set `BYPASS_AVAILABILITY=1` to test every fixture outside its live 30-day window.
+Open `http://127.0.0.1:5000`. Set `BYPASS_AVAILABILITY=1` to test every fixture outside its live 100-hour window.
+
+All regular and featured games unlock at **00:00 UK time on their fixture date**, regardless of kick-off time. For example, a fixture dated 24 October 2026 opens at 00:00 on 24 October, not the following night. The home page shows an upcoming supported-team fixture greyed out with a padlock until it opens. Games close 100 hours after unlocking.
 
 Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values.
 
@@ -44,7 +46,7 @@ The downloaded game checks exact, correct/typo, close and incorrect guesses on t
 
 When switching from an online quiz using **Play offline**, an existing download's page and assets are refreshed to the latest wording/UI after pending progress syncs. Its original expiry, session and progress are retained. A saved link opened without internet must still use the downloaded copy; return online and select **Play offline** to refresh it after a site update.
 
-While a saved game is open, progress and scores sync automatically when connectivity returns. Pending actions also sync on the next online visit to any app page, including after offline access expires. Keep the browser data and reconnect within **seven days of downloading**. The server rechecks the recorded actions using the normal scoring rules; retries cannot award duplicate points. Wait for the synced message before switching to online play. If progress has changed on another page/device, the answers have changed, or the account differs, the app reports the conflict and keeps the offline progress locally rather than overwriting server progress. Guest downloads must sync in the same guest browser session; sign in before downloading if account scores are wanted.
+While a saved game is open, progress and scores sync automatically when connectivity returns. Pending actions also sync on the next online visit to any app page, including after offline access expires. Keep the browser data and reconnect within **seven days of downloading**. The server rechecks the recorded actions using the normal scoring rules; retries cannot award duplicate points. Routine sync succeeds silently. Use **Return to online play** to sync before switching; if syncing fails, a warning appears. If progress has changed on another page/device, the answers have changed, or the account differs, the app reports the conflict and keeps the offline progress locally rather than overwriting server progress. Guest downloads must sync in the same guest browser session; sign in before downloading if account scores are wanted.
 
 Offline play requires HTTPS (localhost is allowed for development), service workers, IndexedDB and browser storage permission. Downloads belong to the browser/profile, not every device using the same account. Private browsing, clearing site data or browser storage eviction can remove them. Answers are downloaded in readable form, so offline play is not suitable for tamper-proof competitions; use caution on shared devices. Expiry prevents further play, but physical cleanup is lazy: stored answer data is pruned on the next app visit, and expired cached pages on the next saved-link visit or download. No background deletion runs while the browser is closed.
 
@@ -53,6 +55,8 @@ For PythonAnywhere, deploy the updated Python, templates and static files togeth
 ## Browser game notifications
 
 Users can opt in from their profile. At 7:30am UK time, the daily task sends a browser push only when that user's supported team has a playable fixture dated that UK day. Users set to Neutral, fixtures with no shared players, and fixtures that are not playable are skipped. Clicking the notification opens that fixture.
+
+The profile always shows **Enable notifications**. Until the server has `PUSH_VAPID_PUBLIC_KEY` configured it is disabled with a setup explanation; an enabled button alone does not configure delivery. Complete the VAPID and PythonAnywhere daily-task setup below, reload the web app, then users can opt in. No private keys should be entered into the profile or committed to the repository.
 
 Push notifications require HTTPS and a browser that supports Web Push. On iPhone and iPad, the user must add the site to their Home Screen before enabling notifications. Generate one VAPID key pair and keep the private key outside the repository. Configure these values for both the web app and the scheduled task:
 

@@ -37,6 +37,7 @@ def test_supporter_without_open_fixture_sees_next_unlock(signed_in_client, app):
     availability = Quiz.availability
     with patch.object(Quiz, 'availability', lambda quiz: availability(quiz, now)):
         page = signed_in_client.get('/').data
-    panel = page.split(b'class="home-panel your-team-panel"', 1)[1].split(b'</a>', 1)[0]
+    panel = page.split(b'class="home-panel your-team-panel locked-team-panel"', 1)[1].split(b'</a>', 1)[0]
     assert b'Bristol City' in panel
-    assert b'Opens 10 October 2026 at 06:00' in panel
+    assert b'Opens 10 October 2026 at 00:00' in panel
+    assert b'&#128274;' in panel

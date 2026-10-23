@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -8,7 +8,7 @@ from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, re
 
 from .auth import login_required
 from .badges import BADGE_FILES
-from .data_loader import FEATURED_UNLOCK, QUIZ_TIMEZONE, _shared_players, slugify
+from .data_loader import QUIZ_TIMEZONE, _shared_players, slugify
 from .db import get_db, get_progress, progress_counts, save_progress
 from .leaderboard import calculate_standings, fan_standing
 from .gameplay import (
@@ -29,8 +29,7 @@ def service_worker():
 
 def todays_featured_quiz(now: datetime | None = None):
     now = now or datetime.now(QUIZ_TIMEZONE)
-    # Each featured game opens at 00:01, so 00:00-00:00:59 still belongs to the previous day.
-    featured_day = (now - timedelta(hours=FEATURED_UNLOCK.hour, minutes=FEATURED_UNLOCK.minute)).date()
+    featured_day = now.astimezone(QUIZ_TIMEZONE).date() if now.tzinfo else now.date()
     return next(
         (quiz for quiz in current_app.config.get("FEATURED_QUIZZES", []) if quiz.fixture_date.date() == featured_day),
         None,
@@ -348,7 +347,7 @@ def _guard_quiz(quiz_id):
         return None, (jsonify({"status": "no_answers", "message": "No shared players are listed for this fixture."}), 409)
     status = _availability(quiz)
     if status != "playable":
-        message = "This game has expired." if status == "expired" else "This game unlocks at 4am on match day."
+        message = "This game has expired." if status == "expired" else "This game unlocks at midnight (00:00 UK time) on match day."
         return None, (jsonify({"status": status, "message": message}), 403)
     return quiz, None
 

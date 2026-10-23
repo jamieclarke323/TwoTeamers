@@ -11,7 +11,6 @@
 </section>
 <section class="game-controls">
   {% if offline_mode %}
-  <p>Saved on this device. Bookmark this page to reopen it without internet.</p>
   <a class="text-button" id="return-online" href="{{ url_for('main.quiz_page', quiz_id=quiz.quiz_id) }}">Return to online play (internet required)</a>
   {% endif %}
   <form class="guess-form" id="guess-form">

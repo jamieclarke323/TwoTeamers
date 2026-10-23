@@ -12,8 +12,8 @@ from zoneinfo import ZoneInfo
 import openpyxl
 
 QUIZ_TIMEZONE = ZoneInfo("Europe/London")
-UNLOCK_HOUR = 6
-FEATURED_UNLOCK = time(0, 1)
+UNLOCK_HOUR = 0
+FEATURED_UNLOCK = time(0, 0)
 PLAYABLE_HOURS = 100
 MIN_ELIGIBLE_SEASON_START = 1999
 

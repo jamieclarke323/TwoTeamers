@@ -92,7 +92,7 @@ def test_download_contains_matching_clues_assets_and_eight_hour_limit(offline_cl
     assert package["expiresAt"] - package["issuedAt"] == 8 * 60 * 60 * 1000
     assert package["players"][0]["answers"][-1] == "Guðmundsson"
     assert package["players"][0]["clues"]["nationality"] == "🇫🇷 France"
-    assert "Bookmark this page" in downloaded["html"]
+    assert "Bookmark this page" not in downloaded["html"]
     assert "/static/js/offline-game.js" in downloaded["assets"]
     assert downloaded["url"] == f"/offline/quiz/offline-test?download={package['id']}"
     for asset in downloaded["assets"]:

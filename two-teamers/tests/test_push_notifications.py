@@ -50,7 +50,7 @@ def test_sends_once_for_a_supported_team_game_and_opens_that_game(
 
 
 def test_does_not_send_before_fixture_unlock(signed_in_client, app, monkeypatch, tmp_path):
-    now = datetime(2026, 10, 21, 5, 30, tzinfo=QUIZ_TIMEZONE)
+    now = datetime(2026, 10, 20, 23, 59, tzinfo=QUIZ_TIMEZONE)
     base = next(quiz for quiz in app.config["QUIZZES"] if quiz.players)
     quiz = replace(
         base,

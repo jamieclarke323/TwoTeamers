@@ -37,12 +37,12 @@ def test_featured_short_names_map_to_club_names():
     assert _featured_club_name("Brighton and Hove Albion") == "Brighton & Hove Albion"
 
 
-def test_featured_day_switches_just_after_midnight(app):
+def test_featured_day_switches_at_midnight(app):
     quiz = app.config["FEATURED_QUIZZES"][1]
     day = quiz.fixture_date.date()
     with app.app_context():
-        at_unlock = datetime(day.year, day.month, day.day, 0, 1, tzinfo=QUIZ_TIMEZONE)
-        before_unlock = datetime(day.year, day.month, day.day, 0, 0, 30, tzinfo=QUIZ_TIMEZONE)
+        at_unlock = datetime(day.year, day.month, day.day, 0, 0, tzinfo=QUIZ_TIMEZONE)
+        before_unlock = at_unlock - timedelta(microseconds=1)
         assert todays_featured_quiz(at_unlock) is quiz
         assert todays_featured_quiz(before_unlock) is not quiz
     assert quiz.unlock_at == at_unlock

@@ -45,7 +45,6 @@
   const syncPending = async () => {
     try {
       const errors = [];
-      let uploaded = false;
       for (const saved of await OfflineStorage.all()) {
         if (Date.now() >= saved.expiresAt) await OfflineStorage.update(saved.id, (latest) => {
           if (latest) delete latest.players;
@@ -54,14 +53,12 @@
         if (saved.actions.some((event) => event.seq > saved.acknowledged)) {
           try {
             await sync(saved.id);
-            uploaded = true;
           } catch (error) {
             errors.push(`${saved.home} vs ${saved.away}: ${error.message}`);
           }
         }
       }
       if (errors.length) showStatus(`Offline progress is still saved on this device. ${errors.join(" ")} Reconnect or reopen this page to retry.`);
-      else if (uploaded) showStatus("Saved offline progress has synced. Reload an already-open online game to see it.");
     } catch (error) {
       showStatus(`Could not access offline progress: ${error.message}`);
     }

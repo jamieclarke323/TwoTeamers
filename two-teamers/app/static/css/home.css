@@ -12,6 +12,9 @@ a.home-panel:hover,button.home-panel:hover{transform:translateY(-2px);box-shadow
 .home-match-vs{color:var(--muted);font-size:.8rem;text-transform:uppercase}
 .guest-team-panel{background:#e2e2dc;border-color:#b4b6ac;color:#6a6d63;cursor:pointer}
 .guest-team-panel .choice-action{color:#6a6d63}
+.locked-team-panel{background:#e8e8e2;border-color:#a5a79e;color:#64675e}
+.locked-team-panel .home-matchup{opacity:.65;filter:grayscale(.7)}
+.locked-team-panel .choice-action{color:#64675e}
 .browse-home-panel{min-height:190px;align-items:flex-start;text-align:left}
 #home-login-toast{font-family:var(--body);font-size:1rem;z-index:10;text-align:center;max-width:calc(100% - 32px)}
 @media(max-width:600px){.home-panel-grid{grid-template-columns:1fr;gap:14px}.home-panel{min-height:220px;padding:22px 18px;gap:16px}.home-match-team img{width:64px;height:64px}.browse-home-panel{min-height:150px}.guest-team-panel{min-height:180px}}
