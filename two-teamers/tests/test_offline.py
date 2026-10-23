@@ -75,6 +75,17 @@ def test_online_page_still_hides_answers_until_opt_in(offline_client):
     ).get_json()["status"] == "correct"
 
 
+def test_offline_button_is_compact_and_below_answer_box(offline_client):
+    page = offline_client.get("/quiz/offline-test").get_data(as_text=True)
+    assert page.index('id="guess-input"') < page.index('id="play-offline"') < page.index("</form>")
+    assert 'class="button offline-button"' in page
+    assert 'id="offline-status"' in page
+    snapshot = _download(offline_client)["html"]
+    assert 'id="play-offline"' not in snapshot
+    assert 'id="guess-input"' in snapshot
+    assert 'id="offline-status"' in snapshot
+
+
 def test_download_contains_matching_clues_assets_and_eight_hour_limit(offline_client):
     downloaded = _download(offline_client)
     package = downloaded["package"]
