@@ -32,7 +32,7 @@
   {% endif %}
   {% if not offline_mode %}{% for category, message in get_flashed_messages(with_categories=true) %}<p role="alert" class="flash {{ category }}">{{ message }}</p>{% endfor %}{% endif %}
   <main class="site-main">{% block content %}{% endblock %}</main>
-  <footer>Two Teamers · English football's shared history</footer>
+  <footer>Two Teamers · English football's shared history <a class="footer-link" href="{{ url_for('main.privacy_policy') }}">Privacy Policy</a></footer>
   <script src="{{ url_for('static', filename='js/offline-storage.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
   {% block scripts %}{% endblock %}

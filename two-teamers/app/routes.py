@@ -259,6 +259,11 @@ REPORT_TYPES = (
 )
 
 
+@bp.get("/privacy-policy")
+def privacy_policy():
+    return render_template("privacy_policy.html", hide_featured_banner=True)
+
+
 @bp.route("/report")
 def report_bug():
     return render_template("report.html", report_types=REPORT_TYPES)

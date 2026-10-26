@@ -16,6 +16,10 @@ All regular and featured games unlock at **00:00 UK time on their fixture date**
 
 Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values.
 
+## Privacy Policy
+
+The public `/privacy-policy` page displays the supplied policy, including its October 2026 update date. A small link in the shared footer makes it accessible from all standard pages and newly downloaded offline quiz pages (opening the policy requires a connection). Update `app/templates/privacy_policy.html` when the policy changes.
+
 ## App artwork and player cards
 
 The app uses the supplied `app/static/img/two-teamers-app-icon.svg` for scalable browser/installed-app icons and the matching `two-teamers-app-icon.png` (1080x1080) for PNG fallbacks, iOS Home Screen icons and push notifications. Both original files are used unchanged: no tracing, resizing or conversion. The manifest declares their actual formats and dimensions, and offline downloads include both. Browsers may cache installed-app icons; an existing Home Screen installation may need removing and adding again after deployment.
