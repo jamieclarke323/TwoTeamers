@@ -14,7 +14,7 @@ import openpyxl
 QUIZ_TIMEZONE = ZoneInfo("Europe/London")
 UNLOCK_HOUR = 0
 FEATURED_UNLOCK = time(0, 0)
-PLAYABLE_HOURS = 100
+PLAYABLE_HOURS = 48
 MIN_ELIGIBLE_SEASON_START = 1999
 
 LEAGUE_FILES = {
@@ -64,7 +64,9 @@ FEATURED_CLUB_ALIASES = {
     "Cardiff": "Cardiff City",
     "Charlton": "Charlton Athletic",
     "Leicester": "Leicester City",
+    "Machester United": "Manchester United",
     "Sheffield Utd": "Sheffield United",
+    "Swansea": "Swansea City",
     "Tottenham": "Tottenham Hotspur",
     "West Ham": "West Ham United",
 }
@@ -206,11 +208,16 @@ class QuizPlayer:
         if clue_type == "initials":
             return self.initials
         if clue_type == "nationality":
-            nationalities = {}
-            for nationality in (self.home.nationality, self.away.nationality):
-                nationalities.setdefault(_nationality_identity(nationality), nationality)
-            return " / ".join(nationality_display(value) for value in nationalities.values())
+            return self.nationality
         raise ValueError(f"Unknown clue type: {clue_type}")
+
+    @property
+    def nationality(self) -> str:
+        nationalities = {}
+        for nationality in (self.home.nationality, self.away.nationality):
+            if nationality:
+                nationalities.setdefault(_nationality_identity(nationality), nationality)
+        return " / ".join(nationality_display(value) for value in nationalities.values())
 
     @property
     def has_nationality(self) -> bool:

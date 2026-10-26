@@ -47,8 +47,9 @@
         <div class="player-card found">
           <span class="card-number">{{ loop.index }}</span>
           <strong>{{ player.name }}</strong>
-          <span>{{ team1 }}: {{ player.home.years }} · {{ player.home.apps }} apps · {{ player.home.goals }} goals</span>
-          <span>{{ team2 }}: {{ player.away.years }} · {{ player.away.apps }} apps · {{ player.away.goals }} goals</span>
+          <span>{{ team1 }}: {{ player.home.years }}</span>
+          <span>{{ team2 }}: {{ player.away.years }}</span>
+          {% if player.nationality %}<span>{{ player.nationality }}</span>{% endif %}
         </div>
         {% endfor %}
       </div>

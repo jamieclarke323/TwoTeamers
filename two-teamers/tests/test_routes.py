@@ -50,10 +50,10 @@ def test_pwa_manifest_and_badge_icon_are_linked(client):
     icon = client.get("/static/img/two-teamers-app-icon.png")
     assert icon.status_code == 200
     assert icon.data.startswith(b"\x89PNG")
-    icon_192 = client.get("/static/img/two-teamers-app-icon-192.png")
-    assert icon_192.status_code == 200
-    apple_icon = client.get("/static/img/apple-touch-icon.png")
-    assert apple_icon.status_code == 200
+    svg_icon = client.get("/static/img/two-teamers-app-icon.svg")
+    assert svg_icon.status_code == 200
+    assert svg_icon.mimetype == "image/svg+xml"
+    assert b"<svg" in svg_icon.data
 
 
 def test_team_picker_contains_all_92_clubs(signed_in_client):
@@ -69,9 +69,10 @@ def test_team_picker_contains_all_92_clubs(signed_in_client):
 
 def test_every_configured_badge_asset_exists():
     badge_directory = PROJECT_ROOT / "app" / "static" / "img" / "kits"
-    assert len(BADGE_FILES) == 108
+    assert len(BADGE_FILES) == 112
     assert all((badge_directory / filename).is_file() for filename in BADGE_FILES.values())
     assert BADGE_FILES["PSG"] == "PSG.png"
+    assert BADGE_FILES["Celtic"] == "Celtic.png"
 
 
 def test_team_search_hidden_attribute_hides_explicitly_flex_tiles():

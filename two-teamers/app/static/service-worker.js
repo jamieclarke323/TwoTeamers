@@ -84,8 +84,8 @@ self.addEventListener("push", (event) => {
     message.title || "Two Teamers",
     {
       body: message.body || "Open Two Teamers to play.",
-      icon: "/static/img/two-teamers-app-icon-192.png",
-      badge: "/static/img/two-teamers-app-icon-192.png",
+      icon: "/static/img/two-teamers-app-icon.png",
+      badge: "/static/img/two-teamers-app-icon.png",
       data: {url: message.url || "/"},
     },
   ));

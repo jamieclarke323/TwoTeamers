@@ -99,8 +99,8 @@ def _download_response(quiz, claims, state, token):
             url_for("static", filename=filename) for filename in (
                 "css/style.css", "js/quiz.js", "js/offline-game.js",
                 "js/offline-storage.js", "js/offline-sync.js", "js/offline-quiz.js",
-                "manifest.webmanifest", "img/two-teamers-app-icon-192.png",
-                "img/apple-touch-icon.png",
+                "manifest.webmanifest", "img/two-teamers-app-icon.svg",
+                "img/two-teamers-app-icon.png",
             )
         ],
     })

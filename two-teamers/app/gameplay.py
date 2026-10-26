@@ -4,6 +4,7 @@ from .matching import MatchResult, match_guess
 def public_player(quiz, player, index):
     return {
         "index": index, "name": player.name,
+        "nationality": player.nationality,
         "home_team": quiz.home_team, "away_team": quiz.away_team,
         "home_years": player.home.years, "home_apps": player.home.apps, "home_goals": player.home.goals,
         "away_years": player.away.years, "away_apps": player.away.apps, "away_goals": player.away.goals,

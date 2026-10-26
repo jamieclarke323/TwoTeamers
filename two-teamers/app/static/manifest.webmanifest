@@ -10,15 +10,9 @@
   "theme_color": "#151811",
   "icons": [
     {
-      "src": "/static/img/two-teamers-app-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/static/img/two-teamers-app-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/static/img/two-teamers-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {

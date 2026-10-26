@@ -29,7 +29,7 @@
 <div class="player-grid" id="player-grid">
 {% for player in players %}
 <button class="player-card {{ 'found' if player.found }} {{ 'revealed' if player.revealed }}" type="button" data-index="{{ player.index }}" {{ 'disabled' if player.found }}>
-{% if player.found %}<strong>{{ player.name }}</strong><span>{{ quiz.home_team }}: {{ player.home_years }} · {{ player.home_apps }} apps · {{ player.home_goals }} goals</span><span>{{ quiz.away_team }}: {{ player.away_years }} · {{ player.away_apps }} apps · {{ player.away_goals }} goals</span>{% else %}<span class="card-number">{{ loop.index }}</span><strong>Unknown player</strong><span class="clue-holder">{% for label, value in player.clues %}<span><strong>{{ label }}:</strong> {{ value }}</span>{% else %}Tap for a clue{% endfor %}</span>{% endif %}
+{% if player.found %}<strong>{{ player.name }}</strong><span>{{ quiz.home_team }}: {{ player.home_years }}</span><span>{{ quiz.away_team }}: {{ player.away_years }}</span>{% if player.nationality %}<span>{{ player.nationality }}</span>{% endif %}{% else %}<span class="card-number">{{ loop.index }}</span><strong>Unknown player</strong><span class="clue-holder">{% for label, value in player.clues %}<span><strong>{{ label }}:</strong> {{ value }}</span>{% else %}Tap for a clue{% endfor %}</span>{% endif %}
 </button>
 {% endfor %}
 </div>

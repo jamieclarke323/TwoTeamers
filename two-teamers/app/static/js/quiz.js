@@ -40,7 +40,7 @@
     const element = card(player.index);
     element.classList.add("found"); element.disabled = true;
     if (revealed) element.classList.add("revealed");
-    element.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)} · ${player.home_apps} apps · ${player.home_goals} goals</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)} · ${player.away_apps} apps · ${player.away_goals} goals</span>`;
+    element.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)}</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)}</span>${player.nationality ? `<span>${escapeHtml(player.nationality)}</span>` : ""}`;
   };
   const escapeHtml = (value) => { const element = document.createElement("span"); element.textContent = String(value); return element.innerHTML; };
   const updateShareScore = (solved, total) => {

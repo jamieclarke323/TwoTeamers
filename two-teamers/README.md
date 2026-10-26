@@ -16,6 +16,16 @@ All regular and featured games unlock at **00:00 UK time on their fixture date**
 
 Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values.
 
+## App artwork and player cards
+
+The app uses the supplied `app/static/img/two-teamers-app-icon.svg` for scalable browser/installed-app icons and the matching `two-teamers-app-icon.png` (1080x1080) for PNG fallbacks, iOS Home Screen icons and push notifications. Both original files are used unchanged: no tracing, resizing or conversion. The manifest declares their actual formats and dimensions, and offline downloads include both. Browsers may cache installed-app icons; an existing Home Screen installation may need removing and adding again after deployment.
+
+Kit filenames are assigned in `app/badges.py`. Celtic, AC Milan, Juventus and Rangers use the supplied images copied into `app/static/img/kits/`. Como's kit is pending a supplied image; all other currently available clubs and all featured-fixture clubs have kit assets.
+
+Guessed or revealed player cards show the player's name, years at each club and any available nationality (with the existing flag formatting). Apps and goals are no longer displayed on these cards, including offline and admin answer cards. If only one club has nationality data it is still shown; if neither does, nationality is omitted. Nationality clues retain their existing requirement for both club records.
+
+The featured workbook is loaded at startup without a fixed date limit. Deploy the updated workbook and reload the app to include added rows. The featured-name aliases accept `Machester United` as Manchester United and `Swansea` as Swansea City.
+
 ## Player identity in spreadsheets
 
 The paired club stats tabs use `PlayerId` as the player's identity across all five player workbooks. Keep these IDs as text (including leading zeroes), use the same ID for the same person at every club, and different IDs for different people even if their names are identical.
@@ -92,11 +102,11 @@ PY
 Install dependencies in the PythonAnywhere virtualenv with `pip install -r requirements.txt`, configure the three environment variables in the web app's WSGI configuration, and reload the web app. In PythonAnywhere's **Tasks** page, create a daily scheduled task to run the script with the same database, fixture, and VAPID values. Run it with the project's virtualenv Python from the `two-teamers` directory; set the environment values in the task command as well, since the scheduled task does not inherit the web app's WSGI process environment:
 
 ```bash
-cd /home/USERNAME/TwoTeamers/two-teamers && \
-DATABASE_PATH=/home/USERNAME/TwoTeamers/two-teamers/instance/two-teamers.sqlite \
-FIXTURES_DIR=/home/USERNAME/TwoTeamers \
+cd /home/jamieclarke323/TwoTeamers/two-teamers && \
+DATABASE_PATH=/home/jamieclarke323/TwoTeamers/two-teamers/instance/two-teamers.sqlite \
+FIXTURES_DIR=/home/jamieclarke323/TwoTeamers \
 PUSH_VAPID_PUBLIC_KEY='YOUR_PUBLIC_KEY' \
-PUSH_VAPID_PRIVATE_KEY_FILE=/home/USERNAME/.secrets/twoteamers-vapid.pem \
+PUSH_VAPID_PRIVATE_KEY_FILE=/home/jamieclarke323/.secrets/twoteamers-vapid.pem \
 PUSH_VAPID_SUBJECT=mailto:twoteamerssupport@gmail.com \
 /home/USERNAME/.virtualenvs/ENVIRONMENT/bin/python send_daily_notifications.py
 ```
