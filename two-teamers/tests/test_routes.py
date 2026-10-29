@@ -149,12 +149,12 @@ def test_nationality_clue_returns_flag_when_both_team_values_exist(client, app):
     assert response.get_json()["clues"] == [{"index": 0, "nationality": "🇫🇷 France"}]
 
 
-def test_nationality_clue_is_not_offered_or_returned_when_either_value_missing(client, app):
+def test_nationality_clue_is_not_offered_or_returned_when_both_values_missing(client, app):
     quiz = app.config["QUIZZES"][0]
     quiz.players = [
         QuizPlayer(
             "Test Player",
-            ClubPlayer("Test Player", "2020", 1, 0, "France"),
+            ClubPlayer("Test Player", "2020", 1, 0),
             ClubPlayer("Test Player", "2021", 2, 1),
         )
     ]

@@ -30,7 +30,7 @@ def test_initials_are_derived_from_each_name_part():
     assert player("Patrick van Aanholt").initials == "P.V.A."
 
 
-def test_nationality_clue_uses_flags_and_requires_both_club_values():
+def test_nationality_clue_uses_flags_and_accepts_either_club_value():
     home = ClubPlayer("Player Name", "2020", 1, 0, "France")
     away = ClubPlayer("Player Name", "2021", 2, 1, "France")
     p = QuizPlayer("Player Name", home, away)
@@ -39,6 +39,12 @@ def test_nationality_clue_uses_flags_and_requires_both_club_values():
     assert p.clue_value("nationality", "Home", "Away") == "🇫🇷 France"
 
     missing = QuizPlayer("Player Name", home, ClubPlayer("Player Name", "2021", 2, 1))
+    assert missing.has_nationality is True
+    assert missing.clue_value("nationality", "Home", "Away") == "🇫🇷 France"
+    missing.home, missing.away = missing.away, missing.home
+    assert missing.has_nationality is True
+    assert missing.clue_value("nationality", "Home", "Away") == "🇫🇷 France"
+    missing.away = missing.home
     assert missing.has_nationality is False
     assert nationality_flag("A country not mapped") == "A country not mapped"
 

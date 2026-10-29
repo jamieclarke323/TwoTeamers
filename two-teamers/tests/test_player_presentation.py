@@ -52,8 +52,7 @@ def test_answer_nationality_uses_available_records_without_empty_parts(
     )
     guess = offline_client.post("/quiz/offline-test/guess", json={"guess": "Test Player"})
     assert guess.json["player"]["nationality"] == expected
-    # Nationality clues still require data from both clubs.
-    assert quiz.players[0].has_nationality is bool(home and away)
+    assert quiz.players[0].has_nationality is bool(home or away)
     snapshot = offline_client.post("/quiz/offline-test/offline-package").json
     assert snapshot["package"]["players"][0]["nationality"] == expected
     for page in (offline_client.get("/quiz/offline-test").get_data(as_text=True), snapshot["html"]):
@@ -84,6 +83,46 @@ def test_revealing_answers_includes_nationality_without_changing_scores(offline_
     text = " ".join(parser.text)
     assert "🇫🇷 France" in text
     assert " apps" not in text and " goals" not in text
+
+
+@pytest.mark.parametrize(("home", "away"), [("France", ""), ("", "France")])
+@pytest.mark.parametrize("target", [0, "all"])
+def test_single_record_nationality_clues_work_online_and_in_offline_replay(
+    offline_app, offline_client, home, away, target
+):
+    quiz = offline_app.config["QUIZZES"][0]
+    quiz.players = [
+        QuizPlayer("Test Player", ClubPlayer("Test Player", "2020", 10, 1, home),
+                   ClubPlayer("Test Player", "2021", 20, 2, away)),
+        QuizPlayer("Other Player", ClubPlayer("Other Player", "2020", 10, 1),
+                   ClubPlayer("Other Player", "2021", 20, 2)),
+    ]
+    page = offline_client.get("/quiz/offline-test").get_data(as_text=True)
+    assert '<label id="nationality-clue-option" hidden>' not in page
+    assert '"nationalityPlayerIndices": [0]' in page
+    downloaded = offline_client.post("/quiz/offline-test/offline-package").json
+    pack = downloaded["package"]
+    assert pack["players"][0]["clues"]["nationality"] == "🇫🇷 France"
+    assert "nationality" not in pack["players"][1]["clues"]
+    assert '"nationalityPlayerIndices": [0]' in downloaded["html"]
+
+    body = {"types": ["nationality"], "index": target}
+    synced = offline_client.post("/quiz/offline-test/offline-sync", json={
+        "token": pack["token"],
+        "actions": [{"seq": 1, "at": pack["issuedAt"] + 1, "action": "clue", "body": body}],
+    })
+    assert synced.status_code == 200
+    assert "🇫🇷 France" in offline_client.get("/quiz/offline-test").get_data(as_text=True)
+    response = offline_client.post("/quiz/offline-test/clue", json=body)
+    assert response.status_code == 200
+    clues = response.json["clues"]
+    assert clues[0] == {"index": 0, "nationality": "🇫🇷 France"}
+    if target == "all":
+        assert clues[1] == {"index": 1}
+    unavailable = offline_client.post(
+        "/quiz/offline-test/clue", json={"types": ["nationality"], "index": 1}
+    )
+    assert unavailable.status_code == 400
 
 
 def test_supplied_icons_are_used_for_all_app_surfaces(offline_client):

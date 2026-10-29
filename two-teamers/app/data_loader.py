@@ -221,7 +221,7 @@ class QuizPlayer:
 
     @property
     def has_nationality(self) -> bool:
-        return bool(self.home.nationality and self.away.nationality)
+        return bool(self.home.nationality or self.away.nationality)
 
 
 @dataclass

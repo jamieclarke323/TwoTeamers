@@ -26,7 +26,7 @@ The app uses the supplied `app/static/img/two-teamers-app-icon.svg` for scalable
 
 Kit filenames are assigned in `app/badges.py`. Celtic, AC Milan, Juventus and Rangers use the supplied images copied into `app/static/img/kits/`. Como's kit is pending a supplied image; all other currently available clubs and all featured-fixture clubs have kit assets.
 
-Guessed or revealed player cards show the player's name, years at each club and any available nationality (with the existing flag formatting). Apps and goals are no longer displayed on these cards, including offline and admin answer cards. If only one club has nationality data it is still shown; if neither does, nationality is omitted. Nationality clues retain their existing requirement for both club records.
+Guessed or revealed player cards show the player's name, years at each club and any available nationality (with the existing flag formatting). Apps and goals are no longer displayed on these cards, including offline and admin answer cards. If only one club has nationality data it is still shown; if neither does, nationality is omitted. Nationality clues likewise use either club's available record, both individually and through Reveal clues for all, online and in newly downloaded or refreshed offline games. Players with no nationality on either record do not offer that clue.
 
 The featured workbook is loaded at startup without a fixed date limit. Deploy the updated workbook and reload the app to include added rows. The featured-name aliases accept `Machester United` as Manchester United and `Swansea` as Swansea City.
 
