@@ -22,7 +22,9 @@ The public `/privacy-policy` page displays the supplied policy, including its Oc
 
 ## How to play
 
-The home page and quiz pages share the same **How to play** dialog. It opens automatically for logged-out visitors on their first visit in that browser, or after more than seven days without a visit. Logged-in visitors and visitors seen within the last seven days do not get the automatic prompt. Every page visit refreshes the browser-local `two-teamers-last-visit` timestamp; clearing browser storage makes the next visit a first visit again. The **How to play** button remains available on the home page and playable quizzes for everyone.
+The home page and quiz pages share the same **How to play** dialog. It opens automatically after a three-second delay for logged-out visitors on their first visit in that browser, or after more than seven days without a visit. Logged-in visitors and visitors seen within the last seven days do not get the automatic prompt. Every page visit refreshes the browser-local `two-teamers-last-visit` timestamp; clearing browser storage makes the next visit a first visit again. The **How to play** button remains available on the home page and playable quizzes for everyone; it opens immediately and cancels any pending automatic opening.
+
+On mobile screens (up to 560px wide), the entire dialog is scaled to two thirds of its previous width and height. Content remains scrollable when needed. Desktop dimensions are unchanged.
 
 If browser storage is blocked, automatic opening is skipped with a console warning, but the button still works. Newly downloaded or refreshed offline quizzes include the shared dialog and script; already saved games need refreshing online to receive the change.
 

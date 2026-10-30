@@ -36,6 +36,7 @@
 .dialog-content-body p{margin:0 0 12px;line-height:1.5;color:var(--ink);font-size:.95rem}
 .dialog-content-body p:last-child{margin-bottom:0}
 .dialog-actions-single{margin-top:24px;display:flex;justify-content:flex-end}
+@media(max-width:560px){#how-to-play-dialog{transform:scale(calc(2/3))}}
 .report-link-row{text-align:center;margin:32px 0 0}
 .guess-form .offline-button{margin-top:8px;padding:6px 10px;font-size:.78rem}
 .player-card.revealed{border-color:var(--red);background:#f9d9d5}

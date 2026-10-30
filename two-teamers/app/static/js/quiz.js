@@ -57,7 +57,7 @@
     updateShareScore();
     const openModal = () => {
       const howToPlayDialog = document.getElementById("how-to-play-dialog");
-      if (howToPlayDialog?.open) {
+      if (howToPlayDialog?.open || howToPlayDialog?.dataset.autoOpenPending === "true") {
         howToPlayDialog.addEventListener("close", openModal, {once: true});
         return;
       }
