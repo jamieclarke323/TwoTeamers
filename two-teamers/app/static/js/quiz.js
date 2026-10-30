@@ -88,14 +88,27 @@
     textarea.remove();
     if (!copied) throw new Error("Clipboard copy failed");
   };
+  const copyText = async (text) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      copyTextFallback(text);
+    }
+  };
+  document.getElementById("share-challenge")?.addEventListener("click", async () => {
+    const challengeText = `Think you can name more players who have played for ${data.home} and ${data.away} than me? Come and have a go!\nwww.twoteamers.com`;
+    try {
+      await copyText(challengeText);
+      showClipboardToast();
+    } catch (_error) {
+      feedback.textContent = "Could not access the clipboard. Please allow clipboard access and try again.";
+      feedback.className = "feedback wrong";
+    }
+  });
   const copyShareResult = async () => {
     if (!shareText) return;
     try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(shareText);
-      } else {
-        copyTextFallback(shareText);
-      }
+      await copyText(shareText);
       sessionStorage.setItem(shareDismissedKey, "1");
       shareDialog.close();
       showClipboardToast();

@@ -86,6 +86,24 @@ def test_offline_button_is_compact_and_below_answer_box(offline_client):
     assert 'id="offline-status"' in snapshot
 
 
+@pytest.mark.parametrize("completed", [False, True])
+def test_challenge_share_is_separate_from_result_sharing(offline_client, completed):
+    if completed:
+        for guess in ("Gudmundsson", "van Aanholt"):
+            offline_client.post("/quiz/offline-test/guess", json={"guess": guess})
+    page = offline_client.get("/quiz/offline-test").get_data(as_text=True)
+    utility_actions = page.split('<div class="quiz-utility-actions">', 1)[1].split("</div>", 1)[0]
+    assert utility_actions.index('id="play-offline"') < utility_actions.index('id="share-challenge"')
+    assert 'type="button" id="share-challenge">Share</button>' in utility_actions
+    result_button = page.split('id="share-results"', 1)[1].split("</button>", 1)[0]
+    assert ("hidden" not in result_button) is completed
+    assert ">Share result" in result_button
+    snapshot = _download(offline_client)["html"]
+    assert 'id="share-challenge"' in snapshot
+    assert 'id="play-offline"' not in snapshot
+    assert 'id="share-results"' in snapshot
+
+
 def test_download_contains_matching_clues_assets_and_eight_hour_limit(offline_client):
     downloaded = _download(offline_client)
     package = downloaded["package"]

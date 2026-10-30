@@ -39,6 +39,7 @@
 @media(max-width:560px){#how-to-play-dialog{transform:scale(calc(2/3))}}
 .report-link-row{text-align:center;margin:32px 0 0}
 .guess-form .offline-button{margin-top:8px;padding:6px 10px;font-size:.78rem}
+.quiz-utility-actions{gap:8px;flex-wrap:wrap}
 .player-card.revealed{border-color:var(--red);background:#f9d9d5}
 #give-up-answer:not([hidden]){display:block;margin-top:16px}
 .footer-link{display:inline-block;margin:8px 12px;font-size:.8rem;text-decoration:underline;text-underline-offset:3px}

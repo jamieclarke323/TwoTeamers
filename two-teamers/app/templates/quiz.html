@@ -19,7 +19,10 @@
       <button class="how-to-play-button" type="button" id="how-to-play-btn">How to play</button>
     </div>
     <div><input id="guess-input" type="text" placeholder="Type a surname..." autocomplete="off" {{ 'disabled' if completed or given_up }}><button class="button" type="submit" {{ 'disabled' if completed or given_up }}>Guess</button></div>
-    {% if not offline_mode %}<button class="button offline-button" type="button" id="play-offline">Play offline?</button>{% endif %}
+    <div class="quiz-utility-actions">
+      {% if not offline_mode %}<button class="button offline-button" type="button" id="play-offline">Play offline?</button>{% endif %}
+      <button class="button offline-button" type="button" id="share-challenge">Share</button>
+    </div>
     <small>1999/2000 season onwards only.</small>
   </form>
   <p id="offline-status" role="status" aria-live="polite"></p>

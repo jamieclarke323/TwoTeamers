@@ -58,6 +58,8 @@ This works online and offline, without watching an ad. The existing **Give up** 
 
 ## Optional offline play
 
+The **Share** button beside **Play offline?** copies a challenge using the current quiz's two club names and `www.twoteamers.com`. It is available before and after completion, including in newly downloaded or refreshed offline games. A clipboard confirmation appears on success; clipboard failures show an error. It is separate from **Share result**, which retains the existing score-sharing message and completion dialog.
+
 Normal games still check guesses online. To prepare a game for a journey:
 
 1. Open a playable quiz while connected and select **Play offline**.
