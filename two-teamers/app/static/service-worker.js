@@ -1,5 +1,10 @@
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener("activate", (event) => event.waitUntil((async () => {
+  const cache = await caches.open(ASSET_CACHE);
+  await cache.delete("/static/img/two-teamers-app-icon.png");
+  await cache.delete("/static/img/two-teamers-app-icon.svg");
+  await self.clients.claim();
+})()));
 
 const OFFLINE_CACHE = "two-teamers-offline-pages-v1";
 const ASSET_CACHE = "two-teamers-offline-assets-v1";
@@ -84,8 +89,8 @@ self.addEventListener("push", (event) => {
     message.title || "Two Teamers",
     {
       body: message.body || "Open Two Teamers to play.",
-      icon: "/static/img/two-teamers-app-icon.png",
-      badge: "/static/img/two-teamers-app-icon.png",
+      icon: "/static/img/two-teamers-app-icon-2026.png",
+      badge: "/static/img/two-teamers-app-icon-2026.png",
       data: {url: message.url || "/"},
     },
   ));

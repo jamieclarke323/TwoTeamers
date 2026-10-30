@@ -47,13 +47,11 @@ def test_pwa_manifest_and_badge_icon_are_linked(client):
     assert manifest.status_code == 200
     assert b'"display": "standalone"' in manifest.data
     assert b'"type": "image/png"' in manifest.data
-    icon = client.get("/static/img/two-teamers-app-icon.png")
+    icon = client.get("/static/img/two-teamers-app-icon-2026.png")
     assert icon.status_code == 200
     assert icon.data.startswith(b"\x89PNG")
-    svg_icon = client.get("/static/img/two-teamers-app-icon.svg")
-    assert svg_icon.status_code == 200
-    assert svg_icon.mimetype == "image/svg+xml"
-    assert b"<svg" in svg_icon.data
+    assert client.get("/static/img/two-teamers-app-icon.png").status_code == 404
+    assert client.get("/static/img/two-teamers-app-icon.svg").status_code == 404
 
 
 def test_team_picker_contains_all_92_clubs(signed_in_client):

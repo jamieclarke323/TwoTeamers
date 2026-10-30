@@ -2,7 +2,6 @@ import json
 import struct
 from html.parser import HTMLParser
 from pathlib import Path
-from xml.etree import ElementTree
 
 import pytest
 
@@ -128,27 +127,28 @@ def test_single_record_nationality_clues_work_online_and_in_offline_replay(
 def test_supplied_icons_are_used_for_all_app_surfaces(offline_client):
     manifest = offline_client.get("/static/manifest.webmanifest").json
     assert manifest["icons"] == [
-        {"src": "/static/img/two-teamers-app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
-        {"src": "/static/img/two-teamers-app-icon.png", "sizes": "1080x1080", "type": "image/png", "purpose": "any"},
+        {"src": "/static/img/two-teamers-app-icon-2026.png", "sizes": "768x768", "type": "image/png", "purpose": "any"},
     ]
     for icon in manifest["icons"]:
         response = offline_client.get(icon["src"])
         assert response.status_code == 200
         assert response.mimetype == icon["type"]
-        if icon["type"] == "image/png":
-            assert response.data.startswith(b"\x89PNG\r\n\x1a\n")
-            assert struct.unpack(">II", response.data[16:24]) == (1080, 1080)
-        else:
-            assert ElementTree.fromstring(response.data).tag == "{http://www.w3.org/2000/svg}svg"
+        assert response.data.startswith(b"\x89PNG\r\n\x1a\n")
+        assert struct.unpack(">II", response.data[16:24]) == (768, 768)
     page = offline_client.get("/quiz/offline-test").get_data(as_text=True)
-    assert 'img/two-teamers-app-icon.svg' in page
-    assert 'rel="apple-touch-icon" href="/static/img/two-teamers-app-icon.png"' in page
+    assert 'rel="icon" href="/static/img/two-teamers-app-icon-2026.png" type="image/png" sizes="768x768"' in page
+    assert 'rel="apple-touch-icon" href="/static/img/two-teamers-app-icon-2026.png"' in page
     worker = offline_client.get("/service-worker.js").get_data(as_text=True)
-    assert 'icon: "/static/img/two-teamers-app-icon.png"' in worker
-    assert 'badge: "/static/img/two-teamers-app-icon.png"' in worker
+    assert 'icon: "/static/img/two-teamers-app-icon-2026.png"' in worker
+    assert 'badge: "/static/img/two-teamers-app-icon-2026.png"' in worker
+    for old_icon in ("two-teamers-app-icon.png", "two-teamers-app-icon.svg"):
+        assert offline_client.get(f"/static/img/{old_icon}").status_code == 404
+        assert old_icon not in page
+        assert f'cache.delete("/static/img/{old_icon}")' in worker
     downloaded = offline_client.post("/quiz/offline-test/offline-package").json
-    assert "/static/img/two-teamers-app-icon.svg" in downloaded["assets"]
-    assert "/static/img/two-teamers-app-icon.png" in downloaded["assets"]
+    assert "/static/img/two-teamers-app-icon-2026.png" in downloaded["assets"]
+    assert "/static/img/two-teamers-app-icon.svg" not in downloaded["assets"]
+    assert "/static/img/two-teamers-app-icon.png" not in downloaded["assets"]
     assert all(offline_client.get(asset).status_code == 200 for asset in downloaded["assets"])
     assert "-192.png" not in worker and "-512.png" not in json.dumps(manifest)
 

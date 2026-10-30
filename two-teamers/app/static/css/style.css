@@ -41,6 +41,7 @@
 .guess-form .offline-button{margin-top:8px;padding:6px 10px;font-size:.78rem}
 .quiz-utility-actions{gap:8px;flex-wrap:wrap}
 .player-card.revealed{border-color:var(--red);background:#f9d9d5}
+.player-card .card-number{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);font-size:1rem;pointer-events:none}
 #give-up-answer:not([hidden]){display:block;margin-top:16px}
 .footer-link{display:inline-block;margin:8px 12px;font-size:.8rem;text-decoration:underline;text-underline-offset:3px}
 .footer-link:focus-visible,.privacy-policy a:focus-visible{outline:2px solid var(--green);outline-offset:4px}
