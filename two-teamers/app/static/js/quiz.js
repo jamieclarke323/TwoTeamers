@@ -56,6 +56,11 @@
     if (text) shareText = text;
     updateShareScore();
     const openModal = () => {
+      const howToPlayDialog = document.getElementById("how-to-play-dialog");
+      if (howToPlayDialog?.open) {
+        howToPlayDialog.addEventListener("close", openModal, {once: true});
+        return;
+      }
       if (shareText && (force || !sessionStorage.getItem(shareDismissedKey)) && !shareDialog.open) {
         updateShareScore();
         shareDialog.showModal();
@@ -222,10 +227,6 @@
       else feedback.textContent = result.message || "Could not reset this game.";
     }
   });
-
-  const howToPlayBtn = document.getElementById("how-to-play-btn");
-  const howToPlayDialog = document.getElementById("how-to-play-dialog");
-  howToPlayBtn?.addEventListener("click", () => howToPlayDialog?.showModal());
 
   const clueInfoBtn = document.getElementById("clue-info-btn");
   const statsInfoDialog = document.getElementById("stats-info-dialog");

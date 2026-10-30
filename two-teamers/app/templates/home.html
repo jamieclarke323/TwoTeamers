@@ -33,6 +33,7 @@
     <a class="home-panel browse-home-panel" href="{{ url_for('main.leagues') }}"><h2>Pick a league</h2><p>Explore this week's fixtures.</p><span class="choice-action">Choose your league &rarr;</span></a>
   </div>
 </section>
+<button class="how-to-play-button" type="button" id="how-to-play-btn">How to play</button>
 <div class="toast" id="home-login-toast" role="status" aria-live="polite">log in to use this button</div>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/home.js') }}"></script>{% endblock %}

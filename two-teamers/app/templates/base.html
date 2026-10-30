@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block styles %}{% endblock %}
 </head>
-<body>
+<body data-authenticated="{{ 'true' if g.user else 'false' }}">
   <header class="site-header">
     <div class="brand-nav-group">
       <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
@@ -33,6 +33,8 @@
   {% if not offline_mode %}{% for category, message in get_flashed_messages(with_categories=true) %}<p role="alert" class="flash {{ category }}">{{ message }}</p>{% endfor %}{% endif %}
   <main class="site-main">{% block content %}{% endblock %}</main>
   <footer>Two Teamers · English football's shared history <a class="footer-link" href="{{ url_for('main.privacy_policy') }}">Privacy Policy</a></footer>
+  {% if request.endpoint == 'main.home' or quiz is defined %}{% include "_how_to_play.html" %}{% endif %}
+  <script src="{{ url_for('static', filename='js/how-to-play.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offline-storage.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offline-sync.js') }}"></script>
   {% block scripts %}{% endblock %}

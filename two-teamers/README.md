@@ -20,6 +20,12 @@ Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `D
 
 The public `/privacy-policy` page displays the supplied policy, including its October 2026 update date. A small link in the shared footer makes it accessible from all standard pages and newly downloaded offline quiz pages (opening the policy requires a connection). Update `app/templates/privacy_policy.html` when the policy changes.
 
+## How to play
+
+The home page and quiz pages share the same **How to play** dialog. It opens automatically for logged-out visitors on their first visit in that browser, or after more than seven days without a visit. Logged-in visitors and visitors seen within the last seven days do not get the automatic prompt. Every page visit refreshes the browser-local `two-teamers-last-visit` timestamp; clearing browser storage makes the next visit a first visit again. The **How to play** button remains available on the home page and playable quizzes for everyone.
+
+If browser storage is blocked, automatic opening is skipped with a console warning, but the button still works. Newly downloaded or refreshed offline quizzes include the shared dialog and script; already saved games need refreshing online to receive the change.
+
 ## App artwork and player cards
 
 The app uses the supplied `app/static/img/two-teamers-app-icon.svg` for scalable browser/installed-app icons and the matching `two-teamers-app-icon.png` (1080x1080) for PNG fallbacks, iOS Home Screen icons and push notifications. Both original files are used unchanged: no tracing, resizing or conversion. The manifest declares their actual formats and dimensions, and offline downloads include both. Browsers may cache installed-app icons; an existing Home Screen installation may need removing and adding again after deployment.

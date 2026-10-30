@@ -51,27 +51,6 @@
 <dialog id="clue-dialog"><form method="dialog"><button class="dialog-close" value="cancel" aria-label="Close">&times;</button><p class="eyebrow">Need a hand?</p><h2>Choose a clue <button type="button" class="clue-info-icon" id="clue-info-btn" title="Stats information" aria-label="Stats information">i</button></h2><div class="clue-options {{ 'locked' if clues_locked }}" id="clue-options"><label><input type="checkbox" value="years" {{ 'disabled' if clues_locked }}> Years played</label><label><input type="checkbox" value="initials" {{ 'disabled' if clues_locked }}> Initials</label><label id="nationality-clue-option" {% if not nationality_player_indices %}hidden{% endif %}><input type="checkbox" value="nationality" {{ 'disabled' if clues_locked }}> Nationality</label></div>{% if ads_enabled %}<div class="ad-gate" id="ad-gate" {{ 'hidden' if not clues_locked }}><p id="ad-gate-message">Watch an ad to unlock clues!</p><button class="button" type="button" id="watch-ad">Watch ad</button></div>{% endif %}<button class="button" value="default" id="show-clues" {{ 'disabled' if clues_locked }}>Reveal clues</button>
   <button class="text-button danger" type="button" id="give-up-answer" hidden>Give up on this answer</button>
 </form></dialog>
-<dialog id="how-to-play-dialog" class="info-dialog">
-  <form method="dialog">
-    <button class="dialog-close" value="cancel" aria-label="Close">&times;</button>
-    <p class="eyebrow">Rules</p>
-    <h2>How to play</h2>
-    <div class="dialog-content-body">
-      <p>Name the footballers who have played for both of the (men's) teams listed. You can request clues for individual answers, or for all.</p>
-      <p>You can also give up on one answer from its card. It will show as ❌ when sharing; you can keep scoring for the other players.</p>
-      <p>If you're unsure of the spelling, click 'Guess' and close attempts will be treated as correct answers.</p>
-      <p>Each quiz will only award correct answers for players who played for both clubs from the 1999/2000 season onwards. If a player played for one club before 99/00 and one club after, they will not be counted.</p>
-      <p>When sharing the game with others, you will be awarded a:</p>
-      <p>🟢 for a correct answer found using no clues</p>
-      <p>🟡 where you've used one clue</p>
-      <p>🟠 where you've used two or more clues</p>
-      <p>❌ indicates an answer not found</p>
-    </div>
-    <div class="dialog-actions-single">
-      <button class="button" value="cancel">Got it</button>
-    </div>
-  </form>
-</dialog>
 <script type="application/json" id="quiz-data">{{ {"quizId": quiz.quiz_id, "home": quiz.home_team, "away": quiz.away_team, "completed": completed, "givenUp": given_up, "shareText": share_text, "solvedCount": solved_count, "totalPlayers": quiz.total_players, "adsEnabled": ads_enabled, "nationalityPlayerIndices": nationality_player_indices}|tojson }}</script>
 {% if offline_package %}<script type="application/json" id="offline-package">{{ offline_package|tojson }}</script>{% endif %}
 {% if ads_enabled %}<script type="application/json" id="ads-config">{{ {"provider": "adsense" if adsense_client_id else "simulated"}|tojson }}</script>{% endif %}
