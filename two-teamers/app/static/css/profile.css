@@ -1,0 +1,10 @@
+.push-settings{margin-top:32px;padding-top:24px;border-top:1px solid var(--line)}
+.push-settings h2{margin:0 0 8px;font:1.25rem var(--display)}
+.push-settings>p{color:var(--muted);font-size:.9rem;line-height:1.5}
+#push-status{min-height:1.5em}
+#push-preferences{display:grid;gap:12px;margin-top:18px}
+#push-preferences[hidden]{display:none}
+#push-preferences label{display:flex;align-items:center;gap:10px;font-weight:600}
+#push-preferences input{width:18px;height:18px;accent-color:var(--green)}
+#push-preferences .button{justify-self:start}
+#push-success-toast{z-index:10}

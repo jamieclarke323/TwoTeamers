@@ -77,6 +77,25 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+const safeNotificationTarget = (url) => {
+  let target;
+  try {
+    target = new URL(typeof url === "string" ? url : "/", self.location.origin);
+  } catch {
+    return new URL("/", self.location.origin);
+  }
+  const allowedPath = target.pathname === "/"
+    || target.pathname === "/featured"
+    || target.pathname === "/profile"
+    || /^\/quiz\/[a-zA-Z0-9_-]+$/.test(target.pathname);
+  if (target.origin !== self.location.origin || !allowedPath) {
+    return new URL("/", self.location.origin);
+  }
+  target.search = "";
+  target.hash = "";
+  return target;
+};
+
 self.addEventListener("push", (event) => {
   let message = {};
   try {
@@ -85,28 +104,40 @@ self.addEventListener("push", (event) => {
     console.error("Could not read push notification data.", error);
   }
 
+  if (!message || typeof message !== "object") message = {};
+  const target = safeNotificationTarget(message.url);
   event.waitUntil(self.registration.showNotification(
-    message.title || "Two Teamers",
+    typeof message.title === "string" && message.title
+      ? message.title
+      : "Two Teamers",
     {
-      body: message.body || "Open Two Teamers to play.",
+      body: typeof message.body === "string" && message.body
+        ? message.body
+        : "Open Two Teamers to play.",
       icon: "/static/img/two-teamers-app-icon-2026.png",
       badge: "/static/img/two-teamers-app-icon-2026.png",
-      data: {url: message.url || "/"},
+      data: {url: target.href},
     },
   ));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || "/", self.location.origin);
-  if (target.origin !== self.location.origin) return;
+  const target = safeNotificationTarget(event.notification.data?.url);
 
-  event.waitUntil(clients.matchAll({type: "window", includeUncontrolled: true}).then((windows) => {
+  event.waitUntil(self.clients.matchAll({type: "window", includeUncontrolled: true}).then(async (windows) => {
     for (const client of windows) {
-      if (client.url.startsWith(self.location.origin) && "focus" in client) {
-        return client.navigate(target.href).then(() => client.focus());
+      if (new URL(client.url).origin === self.location.origin && "focus" in client) {
+        try {
+          const navigatedClient = "navigate" in client
+            ? await client.navigate(target.href)
+            : null;
+          if (navigatedClient) return navigatedClient.focus();
+        } catch (error) {
+          console.error("Could not navigate the notification window.", error);
+        }
       }
     }
-    return clients.openWindow(target.href);
+    return self.clients.openWindow(target.href);
   }));
 });

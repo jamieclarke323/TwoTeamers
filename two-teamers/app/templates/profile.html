@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Profile | Two Teamers{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">{% endblock %}
 {% block content %}
 <section class="auth-shell"><div class="auth-panel">
   <a class="back-link" href="{{ url_for('main.home') }}">Back</a>
@@ -16,14 +17,25 @@
   </form>
   <section class="push-settings" aria-labelledby="push-heading">
     <h2 id="push-heading">Game notifications</h2>
-    <p>Opt in to a browser notification at 7:30am UK time when your team's game is ready to play.</p>
-    <button class="button" type="button" id="push-toggle" data-public-key="{{ push_public_key }}" {% if not push_notifications_available %}disabled aria-describedby="push-status"{% endif %}>Enable notifications</button>
-    {% if push_notifications_available %}
-    <p id="push-status" role="status" aria-live="polite">{{ 'Notifications are enabled on at least one device.' if has_push_subscriptions else 'Notifications are currently off.' }}</p>
-    {% else %}
-    <p id="push-status" role="status">Notifications are not available yet. The site owner needs to finish notification setup before you can opt in.</p>
-    {% endif %}
+    <p>Choose which optional game reminders to receive. Preferences apply to all your subscribed devices.</p>
+    <button class="button" type="button" id="push-toggle"
+      data-public-key="{{ push_public_key }}"
+      data-csrf-token="{{ push_csrf_token }}"
+      data-push-configured="{{ 'true' if push_notifications_available else 'false' }}"
+      data-has-subscriptions="{{ 'true' if has_push_subscriptions else 'false' }}"
+      {% if not push_notifications_available %}disabled{% endif %}>Enable Notifications</button>
+    <p id="push-status" role="status" aria-live="polite">
+      {% if not push_notifications_available %}The site owner needs to finish notification setup.
+      {% elif has_push_subscriptions %}Notifications are active on at least one device.
+      {% else %}Enable notifications on this device to receive reminders.{% endif %}
+    </p>
+    <form id="push-preferences" {% if not has_push_subscriptions %}hidden{% endif %}>
+      <label><input id="daily-game-notifications" type="checkbox" {% if daily_game_notifications %}checked{% endif %}> Daily Game Notifications</label>
+      <label><input id="my-team-notifications" type="checkbox" {% if my_team_notifications %}checked{% endif %}> My Team Notifications</label>
+      <button class="button" type="submit" id="update-push-preferences">Update Notifications</button>
+    </form>
+    <div class="toast" id="push-success-toast" role="status" aria-live="polite">Preferences updated ✓</div>
   </section>
 </div></section>
 {% endblock %}
-{% block scripts %}{% if push_notifications_available %}<script src="{{ url_for('static', filename='js/push-notifications.js') }}"></script>{% endif %}{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/push-notifications.js') }}"></script>{% endblock %}

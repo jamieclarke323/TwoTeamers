@@ -324,6 +324,9 @@ def test_service_worker_remains_push_capable(offline_client):
     assert response.status_code == 200
     assert b'SAVE_OFFLINE_GAME' in response.data
     assert b'addEventListener("push"' in response.data
+    assert b"safeNotificationTarget" in response.data
+    assert b"target.origin !== self.location.origin" in response.data
+    assert b"/^\\/quiz\\/[a-zA-Z0-9_-]+$/" in response.data
     assert response.headers["Service-Worker-Allowed"] == "/"
 
 

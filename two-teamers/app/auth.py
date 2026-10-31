@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 from functools import wraps
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from flask import Blueprint, current_app, flash, g, jsonify, redirect, render_template, request, session, url_for
@@ -130,12 +132,47 @@ def profile():
     subscription_count = get_db().execute(
         "SELECT COUNT(*) FROM push_subscriptions WHERE user_id = ?", (g.user["id"],)
     ).fetchone()[0]
+    push_preferences = get_db().execute(
+        """SELECT daily_game_notifications, my_team_notifications
+           FROM users WHERE id = ?""",
+        (g.user["id"],),
+    ).fetchone()
+    csrf_token = session.get("push_csrf_token")
+    if csrf_token is None:
+        csrf_token = secrets.token_urlsafe(32)
+        session["push_csrf_token"] = csrf_token
+    vapid_key_file = current_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"]
+    push_notifications_available = bool(
+        current_app.config["PUSH_VAPID_PUBLIC_KEY"]
+        and vapid_key_file
+        and Path(vapid_key_file).is_file()
+    )
     return render_template(
         "profile.html",
         team_choices=team_choices,
-        push_notifications_available=bool(current_app.config["PUSH_VAPID_PUBLIC_KEY"]),
+        push_notifications_available=push_notifications_available,
         push_public_key=current_app.config["PUSH_VAPID_PUBLIC_KEY"],
+        push_csrf_token=csrf_token,
         has_push_subscriptions=subscription_count > 0,
+        daily_game_notifications=bool(push_preferences["daily_game_notifications"]),
+        my_team_notifications=bool(push_preferences["my_team_notifications"]),
+    )
+
+
+def _validate_push_csrf():
+    expected = session.get("push_csrf_token")
+    supplied = request.headers.get("X-CSRF-Token", "")
+    if not expected or not secrets.compare_digest(expected, supplied):
+        return jsonify({"error": "Refresh the page and try again."}), 403
+    return None
+
+
+def _push_server_configured() -> bool:
+    key_file = current_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"]
+    return bool(
+        current_app.config["PUSH_VAPID_PUBLIC_KEY"]
+        and key_file
+        and Path(key_file).is_file()
     )
 
 
@@ -162,8 +199,11 @@ def _valid_push_endpoint(endpoint: str) -> bool:
 @bp.post("/push/subscribe")
 @login_required
 def save_push_subscription():
-    if not current_app.config["PUSH_VAPID_PUBLIC_KEY"]:
+    if not _push_server_configured():
         return jsonify({"error": "Push notifications are not configured."}), 503
+    csrf_error = _validate_push_csrf()
+    if csrf_error:
+        return csrf_error
     subscription = request.get_json(silent=True)
     if not isinstance(subscription, dict):
         return jsonify({"error": "A valid push subscription is required."}), 400
@@ -179,7 +219,22 @@ def save_push_subscription():
         or not keys["auth"]
     ):
         return jsonify({"error": "A valid push subscription is required."}), 400
-    get_db().execute(
+    db = get_db()
+    db.execute("BEGIN IMMEDIATE")
+    preferences = db.execute(
+        "SELECT push_preferences_initialized FROM users WHERE id = ?",
+        (g.user["id"],),
+    ).fetchone()
+    if not preferences["push_preferences_initialized"]:
+        db.execute(
+            """UPDATE users
+               SET daily_game_notifications = 1,
+                   my_team_notifications = 1,
+                   push_preferences_initialized = 1
+               WHERE id = ?""",
+            (g.user["id"],),
+        )
+    db.execute(
         """INSERT INTO push_subscriptions (endpoint, user_id, subscription_json)
            VALUES (?, ?, ?)
            ON CONFLICT(endpoint) DO UPDATE SET
@@ -187,13 +242,25 @@ def save_push_subscription():
              subscription_json = excluded.subscription_json""",
         (endpoint, g.user["id"], json.dumps(subscription)),
     )
-    get_db().commit()
-    return jsonify({"status": "subscribed"})
+    db.commit()
+    preferences = db.execute(
+        """SELECT daily_game_notifications, my_team_notifications
+           FROM users WHERE id = ?""",
+        (g.user["id"],),
+    ).fetchone()
+    return jsonify({
+        "status": "subscribed",
+        "daily_game_notifications": bool(preferences["daily_game_notifications"]),
+        "my_team_notifications": bool(preferences["my_team_notifications"]),
+    })
 
 
 @bp.post("/push/unsubscribe")
 @login_required
 def remove_push_subscription():
+    csrf_error = _validate_push_csrf()
+    if csrf_error:
+        return csrf_error
     subscription = request.get_json(silent=True)
     endpoint = subscription.get("endpoint") if isinstance(subscription, dict) else None
     if not isinstance(endpoint, str) or not _valid_push_endpoint(endpoint):
@@ -204,6 +271,40 @@ def remove_push_subscription():
     )
     get_db().commit()
     return jsonify({"status": "unsubscribed"})
+
+
+@bp.post("/push/preferences")
+@login_required
+def update_push_preferences():
+    csrf_error = _validate_push_csrf()
+    if csrf_error:
+        return csrf_error
+    preferences = request.get_json(silent=True)
+    if (
+        not isinstance(preferences, dict)
+        or type(preferences.get("daily_game_notifications")) is not bool
+        or type(preferences.get("my_team_notifications")) is not bool
+    ):
+        return jsonify({"error": "Choose a value for both notification preferences."}), 400
+    db = get_db()
+    db.execute(
+        """UPDATE users
+           SET daily_game_notifications = ?,
+               my_team_notifications = ?,
+               push_preferences_initialized = 1
+           WHERE id = ?""",
+        (
+            int(preferences["daily_game_notifications"]),
+            int(preferences["my_team_notifications"]),
+            g.user["id"],
+        ),
+    )
+    db.commit()
+    return jsonify({
+        "status": "updated",
+        "daily_game_notifications": preferences["daily_game_notifications"],
+        "my_team_notifications": preferences["my_team_notifications"],
+    })
 
 
 @bp.post("/logout")

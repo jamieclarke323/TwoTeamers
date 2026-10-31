@@ -81,11 +81,15 @@ def test_profile_shows_disabled_opt_in_until_keys_configured(offline_app, offlin
     page = offline_client.get("/profile").get_data(as_text=True)
     button = page.split('id="push-toggle"', 1)[1].split("</button>", 1)[0]
     assert "disabled" in button
-    assert "Enable notifications" in button
+    assert "Enable Notifications" in button
     assert "site owner needs to finish notification setup" in page
-    assert "/static/js/push-notifications.js" not in page
+    assert "/static/js/push-notifications.js" in page
     assert offline_client.post("/push/subscribe", json={}).status_code == 503
+    private_file = offline_app.config["DATABASE"] + ".vapid-test-key"
+    with open(private_file, "w", encoding="utf-8") as key_file:
+        key_file.write("test-only")
     offline_app.config["PUSH_VAPID_PUBLIC_KEY"] = "test-public-key"
+    offline_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"] = private_file
     page = offline_client.get("/profile").get_data(as_text=True)
     button = page.split('id="push-toggle"', 1)[1].split("</button>", 1)[0]
     assert "disabled" not in button
@@ -101,22 +105,27 @@ def test_daily_push_still_sends_at_morning_task_after_midnight_unlock(
         offline_app.config["QUIZZES"][0],
         fixture_date=datetime(2026, 10, 24, 15, tzinfo=QUIZ_TIMEZONE),
     )
+    featured = replace(quiz, quiz_id="featured-midnight-test", league_id=FEATURED_LEAGUE_ID)
     private_file = tmp_path / "test-key.pem"
     private_file.write_text("test-only")
     offline_app.config.update(
-        QUIZZES=[quiz], PUSH_VAPID_PUBLIC_KEY="public-key",
+        QUIZZES=[quiz], FEATURED_QUIZZES=[featured],
+        PUSH_VAPID_PUBLIC_KEY="public-key",
         PUSH_VAPID_PRIVATE_KEY_FILE=str(private_file),
     )
+    offline_client.get("/profile")
+    with offline_client.session_transaction() as browser_session:
+        csrf_token = browser_session["push_csrf_token"]
     assert offline_client.post("/push/subscribe", json={
         "endpoint": "https://fcm.googleapis.com/fcm/send/midnight-test",
         "keys": {"p256dh": "public", "auth": "auth"},
-    }).status_code == 200
+    }, headers={"X-CSRF-Token": csrf_token}).status_code == 200
     deliveries = []
     monkeypatch.setattr(push_notifications, "_send_web_push", lambda *args: deliveries.append(args))
     assert push_notifications.send_daily_notifications(
         offline_app, quiz.unlock_at - timedelta(seconds=1)
     ) == 0
-    morning = quiz.unlock_at.replace(hour=7, minute=30)
-    assert push_notifications.send_daily_notifications(offline_app, morning) == 1
-    assert push_notifications.send_daily_notifications(offline_app, morning) == 0
+    morning = quiz.unlock_at.replace(hour=7, minute=31)
+    assert push_notifications.send_daily_game_notifications(offline_app, morning) == 1
+    assert push_notifications.send_daily_game_notifications(offline_app, morning) == 0
     assert len(deliveries) == 1

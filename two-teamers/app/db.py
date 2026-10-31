@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
     password_hash TEXT NOT NULL,
     supported_team TEXT NOT NULL DEFAULT 'Neutral',
+    daily_game_notifications INTEGER NOT NULL DEFAULT 0,
+    my_team_notifications INTEGER NOT NULL DEFAULT 0,
+    push_preferences_initialized INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -61,6 +64,24 @@ CREATE TABLE IF NOT EXISTS push_notification_sends (
     PRIMARY KEY (user_id, notification_date),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS push_notification_deliveries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    notification_type TEXT NOT NULL CHECK (notification_type IN ('daily_game', 'my_team')),
+    event_key TEXT NOT NULL,
+    endpoint_hash TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('sending', 'sent', 'failed', 'invalid', 'uncertain')),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_status_code INTEGER,
+    last_error TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at TEXT,
+    UNIQUE (notification_type, event_key, endpoint_hash),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS push_notification_deliveries_event_idx
+    ON push_notification_deliveries(notification_type, event_key, status);
 CREATE TABLE IF NOT EXISTS quiz_answer_versions (
     quiz_id TEXT PRIMARY KEY,
     fingerprint TEXT NOT NULL
@@ -94,29 +115,56 @@ def close_db(_error=None) -> None:
 def init_db(app: Flask) -> None:
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(app.config["DATABASE"])
-    connection.executescript(SCHEMA)
-    user_columns = {
-        row[1] for row in connection.execute("PRAGMA table_info(users)").fetchall()
-    }
-    if "supported_team" not in user_columns:
-        connection.execute(
-            "ALTER TABLE users ADD COLUMN supported_team TEXT NOT NULL DEFAULT 'Neutral'"
-        )
-    for table in ("progress", "guest_progress"):
-        columns = {
-            row[1] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
+    try:
+        connection.executescript(SCHEMA)
+        connection.execute("BEGIN IMMEDIATE")
+        user_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(users)").fetchall()
         }
-        for column, definition in (
-            ("score_started", "INTEGER NOT NULL DEFAULT 0"),
-            ("score_correct", "INTEGER NOT NULL DEFAULT 0"),
-            ("score_total", "INTEGER NOT NULL DEFAULT 0"),
-            ("score_frozen", "INTEGER NOT NULL DEFAULT 0"),
-            ("answer_data_json", "TEXT NOT NULL DEFAULT '{}'"),
-        ):
-            if column not in columns:
-                connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-    connection.commit()
-    connection.close()
+        legacy_push_preferences = "push_preferences_initialized" not in user_columns
+        user_migrations = (
+            ("supported_team", "TEXT NOT NULL DEFAULT 'Neutral'"),
+            ("daily_game_notifications", "INTEGER NOT NULL DEFAULT 0"),
+            ("my_team_notifications", "INTEGER NOT NULL DEFAULT 0"),
+            ("push_preferences_initialized", "INTEGER NOT NULL DEFAULT 0"),
+        )
+        for column, definition in user_migrations:
+            if column not in user_columns:
+                connection.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
+        if legacy_push_preferences:
+            connection.execute(
+                """UPDATE users
+                   SET daily_game_notifications = 1,
+                       my_team_notifications = 1,
+                       push_preferences_initialized = 1
+                   WHERE EXISTS (
+                       SELECT 1 FROM push_subscriptions
+                       WHERE push_subscriptions.user_id = users.id
+                   )"""
+            )
+        for table in ("progress", "guest_progress"):
+            columns = {
+                row[1] for row in connection.execute(
+                    f"PRAGMA table_info({table})"
+                ).fetchall()
+            }
+            for column, definition in (
+                ("score_started", "INTEGER NOT NULL DEFAULT 0"),
+                ("score_correct", "INTEGER NOT NULL DEFAULT 0"),
+                ("score_total", "INTEGER NOT NULL DEFAULT 0"),
+                ("score_frozen", "INTEGER NOT NULL DEFAULT 0"),
+                ("answer_data_json", "TEXT NOT NULL DEFAULT '{}'"),
+            ):
+                if column not in columns:
+                    connection.execute(
+                        f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+                    )
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def _progress_table(identity: int | str) -> tuple[str, str]:

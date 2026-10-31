@@ -78,11 +78,18 @@ For PythonAnywhere, deploy the updated Python, templates and static files togeth
 
 ## Browser game notifications
 
-Users can opt in from their profile. At 7:30am UK time, the daily task sends a browser push only when that user's supported team has a playable fixture dated that UK day. Users set to Neutral, fixtures with no shared players, and fixtures that are not playable are skipped. Clicking the notification opens that fixture.
+Users can opt in from their profile and manage two independent preferences, both applying to all subscribed devices:
 
-The profile always shows **Enable notifications**. Until the server has `PUSH_VAPID_PUBLIC_KEY` configured it is disabled with a setup explanation; an enabled button alone does not configure delivery. Complete the VAPID and PythonAnywhere daily-task setup below, reload the web app, then users can opt in. No private keys should be entered into the profile or committed to the repository.
+- **Daily Game Notifications**: one reminder for the current featured game.
+- **My Team Notifications**: one reminder for each playable regular or featured fixture involving the user's supported team. Neutral users and fixtures with no shared players are skipped. The exact Daily Game fixture is excluded from My Team reminders to prevent duplicates.
 
-Push notifications require HTTPS and a browser that supports Web Push. On iPhone and iPad, the user must add the site to their Home Screen before enabling notifications. Generate one VAPID key pair and keep the private key outside the repository. Configure these values for both the web app and the scheduled task:
+Both preferences are enabled when a user first subscribes; the browser permission prompt and the account preferences must both allow delivery. Existing subscribers are migrated with both preferences enabled once. Users can change either preference in their profile without removing device subscriptions.
+
+The Daily Game task runs at **07:31 UK time** and the My Team task at **07:45 UK time**. Each scheduled script accepts sends only during the five-minute window beginning at its scheduled time (`PUSH_SEND_WINDOW_MINUTES`, default `5`). In PythonAnywhere, create two **hourly** tasks: run `send_daily_notifications.py` at minute `31`, and `send_my_team_notifications.py` at minute `45`. The scripts check `Europe/London` time, so they run at the intended UK times across GMT/BST changes without manually changing the task schedule.
+
+Successful and failed attempts are recorded per device and fixture using a SHA-256 hash of the subscription endpoint, not the raw endpoint. Successful sends are not repeated. Known transient push-service responses are retried up to three times; expired subscriptions (HTTP 404/410) are removed. A command-line test push is available below and can target only one account's subscribed devices.
+
+Push notifications require HTTPS and a browser that supports Web Push. On iPhone and iPad, the user must add the site to their Home Screen before enabling notifications; the profile detects when this is required. Generate one VAPID key pair and keep the private key outside the repository. Configure these values for both the web app and the scheduled tasks:
 
 - `PUSH_VAPID_PUBLIC_KEY`: URL-safe base64 public key.
 - `PUSH_VAPID_PRIVATE_KEY_FILE`: path to the PEM private key, readable only by the app account.
@@ -113,7 +120,7 @@ print(base64.urlsafe_b64encode(public).rstrip(b"=").decode())
 PY
 ```
 
-Install dependencies in the PythonAnywhere virtualenv with `pip install -r requirements.txt`, configure the three environment variables in the web app's WSGI configuration, and reload the web app. In PythonAnywhere's **Tasks** page, create a daily scheduled task to run the script with the same database, fixture, and VAPID values. Run it with the project's virtualenv Python from the `two-teamers` directory; set the environment values in the task command as well, since the scheduled task does not inherit the web app's WSGI process environment:
+Install dependencies in the PythonAnywhere virtualenv with `pip install -r requirements.txt`, configure the three environment variables in the web app's WSGI configuration, and reload the web app. Add both hourly tasks in PythonAnywhere's **Tasks** page. Run each with the project's virtualenv Python from the `two-teamers` directory; scheduled tasks do not inherit the web app's WSGI environment, so set the same database, fixture, and VAPID values in each task command. Replace the example paths with the actual deployment paths before use:
 
 ```bash
 cd /home/jamieclarke323/TwoTeamers/two-teamers && \
@@ -125,4 +132,33 @@ PUSH_VAPID_SUBJECT=mailto:twoteamerssupport@gmail.com \
 /home/USERNAME/.virtualenvs/ENVIRONMENT/bin/python send_daily_notifications.py
 ```
 
-PythonAnywhere scheduled task times use UTC. To deliver at 7:30am UK time, schedule the task for 07:30 UTC during GMT and 06:30 UTC during BST, updating the task when the UK clocks change. Test the command manually before relying on the schedule.
+Use the same command for the second task, replacing `send_daily_notifications.py` with `send_my_team_notifications.py`. PythonAnywhere's task trigger is hourly at the selected minute; the application sends only in the matching UK-time window.
+
+Before deploying, make a consistent SQLite backup outside the repository, using the actual database and backup paths:
+
+```bash
+sqlite3 /path/to/instance/two-teamers.sqlite \
+  ".backup '/path/to/private-backups/two-teamers-before-push.sqlite'"
+```
+
+The preference and delivery tables are created by an additive startup migration; existing subscriptions and gameplay data are retained. For a code-only rollback, disable the two scheduled tasks, redeploy the previous app code and reload the web app; the added tables and columns can remain. If the database itself must be restored, first stop scheduled tasks and app writes, then restore the backup and reload:
+
+```bash
+sqlite3 /path/to/instance/two-teamers.sqlite \
+  ".restore '/path/to/private-backups/two-teamers-before-push.sqlite'"
+```
+
+To send a real test, use an account that has enabled push on a device. This CLI-only command requires an explicit confirmation flag and sends only to that account's subscribed devices; there is no public test endpoint:
+
+```bash
+cd /path/to/TwoTeamers/two-teamers
+DATABASE_PATH=/path/to/instance/two-teamers.sqlite \
+FIXTURES_DIR=/path/to/TwoTeamers \
+PUSH_VAPID_PUBLIC_KEY='YOUR_PUBLIC_KEY' \
+PUSH_VAPID_PRIVATE_KEY_FILE=/path/to/private/twoteamers-vapid.pem \
+PUSH_VAPID_SUBJECT=mailto:twoteamerssupport@gmail.com \
+/path/to/virtualenv/bin/python send_test_push.py \
+  --email test-account@example.com --confirm-send
+```
+
+The test command confirms server-side delivery acceptance only. Verify notifications on a real subscribed browser/device after deployment, including a Home Screen-installed iPhone or iPad if those devices are in use; local tests do not verify production credentials, task configuration, or device delivery.

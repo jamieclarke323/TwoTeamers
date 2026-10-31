@@ -40,6 +40,9 @@ def test_policy_is_public_and_contains_all_sections(offline_client):
     assert "Last updated: October 2026" in page
     assert "Operator: Jamie Clarke" in page
     assert "unique push subscription identifier" in page
+    assert "Daily Game notifications" in page
+    assert "My Team notifications" in page
+    assert "hashed subscription endpoint" in page
     assert "The expiry of the cookie does not automatically delete" in page
     assert "mailto:twoteamerssupport@gmail.com" in parser.links
     assert "https://ico.org.uk/" in parser.links

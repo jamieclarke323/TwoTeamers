@@ -38,6 +38,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         PUSH_VAPID_SUBJECT=os.environ.get(
             "PUSH_VAPID_SUBJECT", "mailto:twoteamerssupport@gmail.com"
         ),
+        PUSH_SEND_WINDOW_MINUTES=int(os.environ.get("PUSH_SEND_WINDOW_MINUTES", "5")),
     )
     if test_config:
         app.config.update(test_config)
