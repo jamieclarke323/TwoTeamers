@@ -8,6 +8,7 @@ from flask import Flask
 
 from .data_loader import CHAMPIONS_LEAGUE_WORKBOOK, FEATURED_WORKBOOK, load_game_data
 from .db import close_db, init_db, sync_quiz_progress
+from .push_config import configure_vapid
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_DIR.parent
@@ -35,6 +36,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         ADSENSE_TEST_MODE=os.environ.get("ADSENSE_TEST_MODE", "1") == "1",
         PUSH_VAPID_PUBLIC_KEY=os.environ.get("PUSH_VAPID_PUBLIC_KEY", ""),
         PUSH_VAPID_PRIVATE_KEY_FILE=os.environ.get("PUSH_VAPID_PRIVATE_KEY_FILE", ""),
+        PUSH_VAPID_CONFIG_ERROR="",
         PUSH_VAPID_SUBJECT=os.environ.get(
             "PUSH_VAPID_SUBJECT", "mailto:twoteamerssupport@gmail.com"
         ),
@@ -53,6 +55,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             str(Path(app.config["DATA_DIR"]) / CHAMPIONS_LEAGUE_WORKBOOK),
         ),
     )
+    configure_vapid(app)
 
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     init_db(app)

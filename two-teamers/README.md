@@ -89,7 +89,11 @@ The Daily Game task runs at **07:31 UK time** and the My Team task at **07:45 UK
 
 Successful and failed attempts are recorded per device and fixture using a SHA-256 hash of the subscription endpoint, not the raw endpoint. Successful sends are not repeated. Known transient push-service responses are retried up to three times; expired subscriptions (HTTP 404/410) are removed. A command-line test push is available below and can target only one account's subscribed devices.
 
-Push notifications require HTTPS and a browser that supports Web Push. On iPhone and iPad, the user must add the site to their Home Screen before enabling notifications; the profile detects when this is required. Generate one VAPID key pair and keep the private key outside the repository. Configure these values for both the web app and the scheduled tasks:
+Push notifications require HTTPS and a browser that supports Web Push. On iPhone and iPad, the user must add the site to their Home Screen before enabling notifications; the profile detects when this is required.
+
+If `PUSH_VAPID_PUBLIC_KEY` and `PUSH_VAPID_PRIVATE_KEY_FILE` are both unset, the app generates a P-256 VAPID key pair on startup. It stores the private key beside the configured database as `vapid-private.pem` with owner-only permissions and derives the matching public key. The default `two-teamers/instance/` directory is gitignored. The web app and scheduled scripts must use the same database path so they share this key. Back up the private key securely; replacing or losing it invalidates existing browser subscriptions.
+
+For deployments that manage VAPID keys explicitly, set these values for both the web app and scheduled tasks:
 
 - `PUSH_VAPID_PUBLIC_KEY`: URL-safe base64 public key.
 - `PUSH_VAPID_PRIVATE_KEY_FILE`: path to the PEM private key, readable only by the app account.
@@ -120,19 +124,16 @@ print(base64.urlsafe_b64encode(public).rstrip(b"=").decode())
 PY
 ```
 
-Install dependencies in the PythonAnywhere virtualenv with `pip install -r requirements.txt`, configure the three environment variables in the web app's WSGI configuration, and reload the web app. Add both hourly tasks in PythonAnywhere's **Tasks** page. Run each with the project's virtualenv Python from the `two-teamers` directory; scheduled tasks do not inherit the web app's WSGI environment, so set the same database, fixture, and VAPID values in each task command. Replace the example paths with the actual deployment paths before use:
+Install dependencies in the PythonAnywhere virtualenv with `pip install -r requirements.txt`, then reload the web app. Add both hourly tasks in PythonAnywhere's **Tasks** page. Run each with the project's virtualenv Python from the `two-teamers` directory; scheduled tasks do not inherit the web app's WSGI environment, so set the same database and fixture paths in each task command. If using an explicitly configured VAPID pair, also pass the same three VAPID values to both tasks. With the app-generated key, no VAPID environment variables are needed as long as the tasks use the same deployment directory. Replace the example paths with the actual deployment paths before use:
 
 ```bash
 cd /home/jamieclarke323/TwoTeamers/two-teamers && \
 DATABASE_PATH=/home/jamieclarke323/TwoTeamers/two-teamers/instance/two-teamers.sqlite \
 FIXTURES_DIR=/home/jamieclarke323/TwoTeamers \
-PUSH_VAPID_PUBLIC_KEY='YOUR_PUBLIC_KEY' \
-PUSH_VAPID_PRIVATE_KEY_FILE=/home/jamieclarke323/.secrets/twoteamers-vapid.pem \
-PUSH_VAPID_SUBJECT=mailto:twoteamerssupport@gmail.com \
 /home/USERNAME/.virtualenvs/ENVIRONMENT/bin/python send_daily_notifications.py
 ```
 
-Use the same command for the second task, replacing `send_daily_notifications.py` with `send_my_team_notifications.py`. PythonAnywhere's task trigger is hourly at the selected minute; the application sends only in the matching UK-time window.
+Use the same command for the second task, replacing `send_daily_notifications.py` with `send_my_team_notifications.py`. For explicitly configured keys, add `PUSH_VAPID_PUBLIC_KEY`, `PUSH_VAPID_PRIVATE_KEY_FILE`, and `PUSH_VAPID_SUBJECT` to both commands. PythonAnywhere's task trigger is hourly at the selected minute; the application sends only in the matching UK-time window.
 
 Before deploying, make a consistent SQLite backup outside the repository, using the actual database and backup paths:
 
@@ -141,7 +142,7 @@ sqlite3 /path/to/instance/two-teamers.sqlite \
   ".backup '/path/to/private-backups/two-teamers-before-push.sqlite'"
 ```
 
-The preference and delivery tables are created by an additive startup migration; existing subscriptions and gameplay data are retained. For a code-only rollback, disable the two scheduled tasks, redeploy the previous app code and reload the web app; the added tables and columns can remain. If the database itself must be restored, first stop scheduled tasks and app writes, then restore the backup and reload:
+The SQLite backup does not include the VAPID key file. Back up the app-generated `<database directory>/vapid-private.pem` separately to a private location (by default, `two-teamers/instance/vapid-private.pem`); if using an explicitly configured key, back up that file instead. Preserve the same key across deployments. The preference and delivery tables are created by an additive startup migration; existing subscriptions and gameplay data are retained. For a code-only rollback, disable the two scheduled tasks, redeploy the previous app code and reload the web app; the added tables and columns can remain. If the database itself must be restored, first stop scheduled tasks and app writes, then restore the backup and reload:
 
 ```bash
 sqlite3 /path/to/instance/two-teamers.sqlite \
@@ -154,11 +155,8 @@ To send a real test, use an account that has enabled push on a device. This CLI-
 cd /path/to/TwoTeamers/two-teamers
 DATABASE_PATH=/path/to/instance/two-teamers.sqlite \
 FIXTURES_DIR=/path/to/TwoTeamers \
-PUSH_VAPID_PUBLIC_KEY='YOUR_PUBLIC_KEY' \
-PUSH_VAPID_PRIVATE_KEY_FILE=/path/to/private/twoteamers-vapid.pem \
-PUSH_VAPID_SUBJECT=mailto:twoteamerssupport@gmail.com \
 /path/to/virtualenv/bin/python send_test_push.py \
   --email test-account@example.com --confirm-send
 ```
 
-The test command confirms server-side delivery acceptance only. Verify notifications on a real subscribed browser/device after deployment, including a Home Screen-installed iPhone or iPad if those devices are in use; local tests do not verify production credentials, task configuration, or device delivery.
+If using explicitly configured keys, add the same three VAPID environment variables to the test command. The test command confirms server-side delivery acceptance only. Verify notifications on a real subscribed browser/device after deployment, including a Home Screen-installed iPhone or iPad if those devices are in use; local tests do not verify production credentials, task configuration, or device delivery.

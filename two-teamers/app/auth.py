@@ -141,17 +141,13 @@ def profile():
     if csrf_token is None:
         csrf_token = secrets.token_urlsafe(32)
         session["push_csrf_token"] = csrf_token
-    vapid_key_file = current_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"]
-    push_notifications_available = bool(
-        current_app.config["PUSH_VAPID_PUBLIC_KEY"]
-        and vapid_key_file
-        and Path(vapid_key_file).is_file()
-    )
+    push_notifications_available = _push_server_configured()
     return render_template(
         "profile.html",
         team_choices=team_choices,
         push_notifications_available=push_notifications_available,
         push_public_key=current_app.config["PUSH_VAPID_PUBLIC_KEY"],
+        push_config_error=current_app.config["PUSH_VAPID_CONFIG_ERROR"],
         push_csrf_token=csrf_token,
         has_push_subscriptions=subscription_count > 0,
         daily_game_notifications=bool(push_preferences["daily_game_notifications"]),
@@ -170,7 +166,8 @@ def _validate_push_csrf():
 def _push_server_configured() -> bool:
     key_file = current_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"]
     return bool(
-        current_app.config["PUSH_VAPID_PUBLIC_KEY"]
+        not current_app.config["PUSH_VAPID_CONFIG_ERROR"]
+        and current_app.config["PUSH_VAPID_PUBLIC_KEY"]
         and key_file
         and Path(key_file).is_file()
     )
@@ -200,7 +197,11 @@ def _valid_push_endpoint(endpoint: str) -> bool:
 @login_required
 def save_push_subscription():
     if not _push_server_configured():
-        return jsonify({"error": "Push notifications are not configured."}), 503
+        error = (
+            current_app.config["PUSH_VAPID_CONFIG_ERROR"]
+            or "Push notifications are not configured."
+        )
+        return jsonify({"error": error}), 503
     csrf_error = _validate_push_csrf()
     if csrf_error:
         return csrf_error
