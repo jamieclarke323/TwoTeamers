@@ -18,7 +18,11 @@ Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `D
 
 ## Privacy Policy
 
-The public `/privacy-policy` page displays the supplied policy, including its October 2026 update date. A small link in the shared footer makes it accessible from all standard pages and newly downloaded offline quiz pages (opening the policy requires a connection). Update `app/templates/privacy_policy.html` when the policy changes.
+The public `/privacy-policy` page displays the policy, updated in November 2026 to disclose Google Analytics. A small link in the shared footer makes it accessible from all standard pages and newly downloaded offline quiz pages (opening the policy requires a connection). Update `app/templates/privacy_policy.html` when the policy changes.
+
+## Google Analytics
+
+The shared online page header includes the Google tag for measurement ID `G-XZLDYJXQ8V`. Newly downloaded offline quiz pages omit the tag. The tag loads immediately, including during local development; no analytics consent control is implemented here. The site owner is handling consent separately and should put that handling in place before enabling tracking for visitors who require consent.
 
 ## How to play
 
