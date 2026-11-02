@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css', v='countdown-2') }}">{% endblock %}
 {% macro matchup(quiz) %}
 <div class="home-matchup">
   <div class="home-match-team">{% if quiz.home_team in badge_files %}<img src="{{ url_for('static', filename='img/kits/' ~ badge_files[quiz.home_team]) }}" alt="{{ quiz.home_team }} home kit">{% endif %}<strong>{{ quiz.home_team }}</strong></div>
@@ -38,4 +38,4 @@
 <button class="how-to-play-button" type="button" id="how-to-play-btn">How to play</button>
 <div class="toast" id="home-login-toast" role="status" aria-live="polite">log in to use this button</div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='js/home.js') }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/home.js', v='countdown-2') }}"></script>{% endblock %}

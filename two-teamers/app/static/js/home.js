@@ -7,6 +7,7 @@
     const now = Date.now();
     for (const { element, deadline } of countdowns) {
       const secondsLeft = Math.max(0, Math.ceil((deadline - now) / 1000));
+      element.classList.toggle("home-countdown-urgent", secondsLeft > 0 && secondsLeft <= 3600);
       if (secondsLeft === 0) {
         element.textContent = "Closed";
         continue;
