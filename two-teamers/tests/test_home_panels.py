@@ -1,8 +1,50 @@
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
+
 from app.data_loader import QUIZ_TIMEZONE, Quiz
 from app.db import get_db
+from test_offline import offline_app, offline_client
+
+
+@pytest.mark.parametrize("day, expected_close", [
+    (datetime(2026, 3, 29, tzinfo=QUIZ_TIMEZONE), "2026-03-30T00:00:00+01:00"),
+    (datetime(2026, 10, 25, tzinfo=QUIZ_TIMEZONE), "2026-10-26T00:00:00+00:00"),
+])
+@pytest.mark.parametrize("playable_hours", [48, 72, 100])
+def test_home_countdowns_use_uk_midnight_and_configured_playable_hours(
+    offline_app, offline_client, monkeypatch, day, expected_close, playable_hours
+):
+    monkeypatch.setattr("app.data_loader.PLAYABLE_HOURS", playable_hours)
+    quiz = offline_app.config["QUIZZES"][0]
+    quiz.fixture_date = day
+    monkeypatch.setattr("app.routes.todays_featured_quiz", lambda: quiz)
+    offline_client.post("/signup", data={
+        "email": "countdown@example.com", "password": "football123",
+        "supported_team": "Home",
+    })
+    page = offline_client.get("/").get_data(as_text=True)
+    daily_panel = page.split('class="home-panel featured-home-panel"', 1)[1].split("</a>", 1)[0]
+    team_panel = page.split('class="home-panel your-team-panel"', 1)[1].split("</a>", 1)[0]
+    assert f'data-closes-at="{expected_close}"' in daily_panel
+    assert f'data-closes-at="{quiz.lock_at.isoformat()}"' in team_panel
+    assert page.count("data-closes-at=") == 2
+
+
+def test_home_countdowns_absent_without_featured_or_playable_team_game(
+    offline_app, offline_client, monkeypatch
+):
+    assert "data-closes-at=" not in offline_client.get("/").get_data(as_text=True)
+    offline_client.post("/signup", data={
+        "email": "locked@example.com", "password": "football123",
+        "supported_team": "Home",
+    })
+    offline_app.config["BYPASS_AVAILABILITY"] = False
+    monkeypatch.setattr(Quiz, "availability", lambda quiz: "upcoming")
+    page = offline_client.get("/").get_data(as_text=True)
+    assert "Locked" in page
+    assert "data-closes-at=" not in page
 
 
 def test_guest_home_has_four_panels_and_login_toast(client):

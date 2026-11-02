@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -86,6 +86,13 @@ def _active_matchweek(quizzes):
 
 @bp.route("/")
 def home():
+    daily_quiz = todays_featured_quiz()
+    daily_closes_at = (
+        datetime.combine(
+            daily_quiz.fixture_date.date() + timedelta(days=1), time.min, QUIZ_TIMEZONE
+        )
+        if daily_quiz else None
+    )
     team_quiz = None
     team_status = None
     if g.user is not None:
@@ -102,7 +109,8 @@ def home():
         if team_quiz is not None:
             team_status = _availability(team_quiz)
     return render_template(
-        "home.html", daily_quiz=todays_featured_quiz(), team_quiz=team_quiz,
+        "home.html", daily_quiz=daily_quiz, daily_closes_at=daily_closes_at,
+        team_quiz=team_quiz,
         team_status=team_status, badge_files=BADGE_FILES, hide_featured_banner=True,
     )
 

@@ -13,6 +13,7 @@
     {% if daily_quiz %}
     <a class="home-panel featured-home-panel" href="{{ url_for('main.featured_game') }}">
       <h2>Today's featured fixture</h2>{{ matchup(daily_quiz) }}<span class="choice-action">Play today's game &rarr;</span>
+      <span class="home-countdown" data-closes-at="{{ daily_closes_at.isoformat() }}">Closes <time datetime="{{ daily_closes_at.isoformat() }}">{{ daily_closes_at.strftime('%d %B at %H:%M') }}</time> (UK time)</span>
     </a>
     {% else %}
     <div class="home-panel featured-home-panel"><h2>Today's featured fixture</h2><p>No featured fixture today. Check back tomorrow!</p></div>
@@ -25,6 +26,7 @@
     <a class="home-panel your-team-panel{{ ' locked-team-panel' if team_status != 'playable' }}" href="{{ url_for('main.quiz_page', quiz_id=team_quiz.quiz_id) }}">
       <h2>Your Team</h2>{{ matchup(team_quiz) }}
       {% if team_status == 'playable' %}<span class="choice-action">Play your team's game &rarr;</span>{% else %}<span class="choice-action"><span aria-hidden="true">&#128274;</span> Locked · Opens {{ team_quiz.unlock_at.strftime('%d %B %Y at %H:%M') }} (UK time)</span>{% endif %}
+      {% if team_status == 'playable' %}<span class="home-countdown" data-closes-at="{{ team_quiz.lock_at.isoformat() }}">Closes <time datetime="{{ team_quiz.lock_at.isoformat() }}">{{ team_quiz.lock_at.strftime('%d %B at %H:%M') }}</time> (UK time)</span>{% endif %}
     </a>
     {% else %}
     <a class="home-panel your-team-panel" href="{{ url_for('auth.profile') }}"><h2>Your Team</h2><p>{{ 'Choose your supported team in your profile.' if g.user.supported_team == 'Neutral' else 'No upcoming fixtures for your team.' }}</p><span class="choice-action">View profile &rarr;</span></a>

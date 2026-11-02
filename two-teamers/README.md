@@ -10,9 +10,11 @@ python3.13 -m venv .venv
 .venv/bin/python run.py
 ```
 
-Open `http://127.0.0.1:5000`. Set `BYPASS_AVAILABILITY=1` to test every fixture outside its live 100-hour window.
+Open `http://127.0.0.1:5000`. Set `BYPASS_AVAILABILITY=1` to test every fixture outside its live window.
 
-All regular and featured games unlock at **00:00 UK time on their fixture date**, regardless of kick-off time. For example, a fixture dated 24 October 2026 opens at 00:00 on 24 October, not the following night. The home page shows an upcoming supported-team fixture greyed out with a padlock until it opens. Games close 100 hours after unlocking.
+All regular and featured games unlock at **00:00 UK time on their fixture date**, regardless of kick-off time. For example, a fixture dated 24 October 2026 opens at 00:00 on 24 October, not the following night. The home page shows an upcoming supported-team fixture greyed out with a padlock until it opens. Games close according to `PLAYABLE_HOURS` in `app/data_loader.py`.
+
+The home page displays live closing countdowns: the Daily Game counts down to the next UK midnight after its featured date, while a playable My Team game uses its existing `lock_at` deadline and therefore follows changes to `PLAYABLE_HOURS`. The two countdowns intentionally differ even when they represent the same fixture. At zero, a countdown reads "Closed"; this display does not change game availability rules.
 
 Production must set a unique random `SECRET_KEY` of at least 32 characters and `SESSION_COOKIE_SECURE=1`, plus persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values. Unsafe production session settings fail at startup. `python run.py` explicitly opts into local development; production must use WSGI, not the debug server. Keep an existing safe secret stable: rotating it invalidates sessions and offline sync tokens.
 
