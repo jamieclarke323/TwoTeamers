@@ -71,8 +71,13 @@ def test_shared_online_header_blocks_google_until_consent(offline_client, path):
     head = page.split("<head>", 1)[1].split("</head>", 1)[0]
     assert "googletagmanager.com" not in page
     assert 'src="/static/js/analytics-consent.js"' in head
-    assert 'id="analytics-accept"' in page
-    assert 'id="analytics-reject"' in page
+    assert 'id="analytics-accept">Accept</button>' in page
+    assert 'id="analytics-reject">Reject</button>' in page
+    assert (
+        "We may use third party analytics to provide vital support to the maintenance "
+        "of Two Teamers website. Google receives website usage and device information. "
+        "You can change your choice using Cookie settings."
+    ) in page
     assert 'id="analytics-settings"' in page
 
 
