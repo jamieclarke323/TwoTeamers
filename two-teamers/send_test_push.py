@@ -28,7 +28,7 @@ def main() -> int:
     except (RuntimeError, ValueError) as error:
         print(f"Test push could not be sent: {error}", file=sys.stderr)
         return 1
-    print(f"Test push delivered to {sent} device(s); {failed} device(s) failed.")
+    print(f"Push service accepted {sent} notification(s); {failed} device(s) failed.")
     return 1 if failed else 0
 
 

@@ -32,6 +32,7 @@ class PushDeliveryError(Exception):
 
 def _send_web_push(subscription: dict, message: dict, private_key: str) -> None:
     try:
+        from py_vapid import Vapid
         from pywebpush import WebPushException, webpush
         from requests.exceptions import RequestException
     except ImportError as error:
@@ -42,11 +43,13 @@ def _send_web_push(subscription: dict, message: dict, private_key: str) -> None:
             subscription_info=subscription,
             data=json.dumps(message),
             ttl=86400,
-            vapid_private_key=private_key,
+            vapid_private_key=Vapid.from_pem(private_key.encode("utf-8")),
             vapid_claims={"sub": current_app.config["PUSH_VAPID_SUBJECT"]},
         )
     except WebPushException as error:
-        status_code = error.response.status_code if error.response else None
+        status_code = (
+            error.response.status_code if error.response is not None else None
+        )
         raise PushDeliveryError(
             "The push service rejected the notification.", status_code
         ) from error

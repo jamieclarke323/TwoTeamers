@@ -9,6 +9,66 @@ from app.db import get_db
 from test_offline import offline_app, offline_client
 
 
+@pytest.mark.parametrize("status_code", [201, 403, 410])
+def test_real_webpush_accepts_pem_and_preserves_service_status(
+    offline_app, monkeypatch, tmp_path, status_code
+):
+    import base64
+    import os
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    import requests
+
+    key = ec.generate_private_key(ec.SECP256R1())
+    pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    private_file = tmp_path / "vapid.pem"
+    private_file.write_bytes(pem)
+    offline_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"] = str(private_file)
+    browser_key = ec.generate_private_key(ec.SECP256R1()).public_key().public_bytes(
+        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+    )
+
+    def encode(value):
+        return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
+
+    subscription = {
+        "endpoint": "https://web.push.apple.com/test-only",
+        "keys": {"p256dh": encode(browser_key), "auth": encode(os.urandom(16))},
+    }
+    sent_headers = []
+
+    def fake_post(*args, **kwargs):
+        sent_headers.append(kwargs["headers"])
+        response = requests.Response()
+        response.status_code = status_code
+        response._content = b""
+        return response
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    with offline_app.app_context():
+        private_key = push_notifications._load_private_key()
+        if status_code == 201:
+            push_notifications._send_web_push(subscription, {"title": "Test"}, private_key)
+        else:
+            with pytest.raises(push_notifications.PushDeliveryError) as error:
+                push_notifications._send_web_push(
+                    subscription, {"title": "Test"}, private_key
+                )
+            assert error.value.status_code == status_code
+    assert len(sent_headers) == 1
+    assert sent_headers[0]["Authorization"].startswith("vapid ")
+    public_key = key.public_key().public_bytes(
+        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+    )
+    assert sent_headers[0]["Authorization"].endswith(f"k={encode(public_key)}")
+    assert private_file.read_bytes() == pem
+
+
 def _configure_push_user(client, app, team, tmp_path, device_count=1):
     app.config["PUSH_VAPID_PUBLIC_KEY"] = "public-key"
     private_key_file = tmp_path / "vapid-private.pem"

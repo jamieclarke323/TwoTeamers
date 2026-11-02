@@ -115,6 +115,8 @@ For deployments that manage VAPID keys explicitly, set these values for both the
 - `PUSH_VAPID_PRIVATE_KEY_FILE`: path to the PEM private key, readable only by the app account.
 - `PUSH_VAPID_SUBJECT`: contact URI for the application, such as `mailto:twoteamerssupport@gmail.com`.
 
+The sender parses the PEM file contents as a VAPID key before signing. Keep the existing private key when deploying sender fixes; regenerating it would invalidate existing subscriptions. Push-service acceptance does not confirm that a device displayed the notification.
+
 Generate a VAPID key pair in the project's virtual environment with:
 
 ```bash
