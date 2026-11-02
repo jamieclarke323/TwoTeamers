@@ -10,8 +10,10 @@ from test_offline import offline_app, offline_client
 
 
 @pytest.mark.parametrize("status_code", [201, 403, 410])
+@pytest.mark.parametrize("pem_format", ["PKCS8", "TraditionalOpenSSL"])
+@pytest.mark.parametrize("extra_whitespace", [False, True])
 def test_real_webpush_accepts_pem_and_preserves_service_status(
-    offline_app, monkeypatch, tmp_path, status_code
+    offline_app, monkeypatch, tmp_path, status_code, pem_format, extra_whitespace
 ):
     import base64
     import os
@@ -23,9 +25,11 @@ def test_real_webpush_accepts_pem_and_preserves_service_status(
     key = ec.generate_private_key(ec.SECP256R1())
     pem = key.private_bytes(
         serialization.Encoding.PEM,
-        serialization.PrivateFormat.PKCS8,
+        getattr(serialization.PrivateFormat, pem_format),
         serialization.NoEncryption(),
     )
+    if extra_whitespace:
+        pem = b"\n" + pem + b"\n\n"
     private_file = tmp_path / "vapid.pem"
     private_file.write_bytes(pem)
     offline_app.config["PUSH_VAPID_PRIVATE_KEY_FILE"] = str(private_file)
