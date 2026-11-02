@@ -9,6 +9,7 @@ from flask import Flask
 from .data_loader import CHAMPIONS_LEAGUE_WORKBOOK, FEATURED_WORKBOOK, load_game_data
 from .db import close_db, init_db, sync_quiz_progress
 from .push_config import configure_vapid
+from .security import init_security
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_DIR.parent
@@ -17,7 +18,11 @@ DATA_DIR = PROJECT_DIR.parent
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key-change-me"),
+        SECRET_KEY=os.environ.get("SECRET_KEY"),
+        DEVELOPMENT=False,
+        CSRF_ENABLED=True,
+        AUTH_RATE_LIMIT_ENABLED=True,
+        MAX_CONTENT_LENGTH=256 * 1024,
         DATABASE=os.environ.get("DATABASE_PATH", str(PROJECT_DIR / "instance" / "two-teamers.sqlite")),
         DATA_DIR=os.environ.get("FIXTURES_DIR", str(DATA_DIR)),
         XLSX_PATH=os.environ.get("PLAYERS_XLSX_PATH", str(DATA_DIR / "2627DataSource.xlsx")),
@@ -26,7 +31,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_REFRESH_EACH_REQUEST=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "0") == "1",
+        SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "1") == "1",
         BYPASS_AVAILABILITY=os.environ.get("BYPASS_AVAILABILITY", "0") == "1",
         REWARDED_ADS_ENABLED=os.environ.get("REWARDED_ADS_ENABLED", "0") == "1",
         # Scores are always recorded; this only controls whether users can see the leaderboard.
@@ -44,6 +49,10 @@ def create_app(test_config: dict | None = None) -> Flask:
     )
     if test_config:
         app.config.update(test_config)
+    if app.testing or app.config["DEVELOPMENT"]:
+        if not test_config or "SESSION_COOKIE_SECURE" not in test_config:
+            app.config["SESSION_COOKIE_SECURE"] = False
+    init_security(app)
     app.config.setdefault(
         "FEATURED_XLSX_PATH",
         os.environ.get("FEATURED_XLSX_PATH", str(Path(app.config["DATA_DIR"]) / FEATURED_WORKBOOK)),

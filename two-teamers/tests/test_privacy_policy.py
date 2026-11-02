@@ -32,13 +32,15 @@ def test_policy_is_public_and_contains_all_sections(offline_client):
     assert response.status_code == 200
     page = response.get_data(as_text=True)
     parser = PolicyParser()
-    parser.feed(page)
+    parser.feed(page.split('<article class="privacy-policy">', 1)[1].split("</article>", 1)[0])
     assert [heading.split(".", 1)[0] for heading in parser.headings] == [
         str(number) for number in range(1, 16)
     ]
     assert "<title>Privacy Policy | Two Teamers</title>" in page
     assert "Last updated: November 2026" in page
     assert "We use Google Analytics" in page
+    assert "Rejecting analytics does not affect gameplay" in page
+    assert "180 days" in page
     assert "https://policies.google.com/privacy" in parser.links
     assert "Operator: Jamie Clarke" in page
     assert "unique push subscription identifier" in page
@@ -62,18 +64,16 @@ def test_shared_footer_links_to_policy(offline_client, path):
 
 
 @pytest.mark.parametrize("path", ["/", "/login", "/privacy-policy", "/quiz/offline-test"])
-def test_shared_online_header_contains_google_tag(offline_client, path):
+def test_shared_online_header_blocks_google_until_consent(offline_client, path):
     response = offline_client.get(path)
     assert response.status_code == 200
     page = response.get_data(as_text=True)
     head = page.split("<head>", 1)[1].split("</head>", 1)[0]
-    assert head.count(
-        '<script async src="https://www.googletagmanager.com/gtag/js?id=G-XZLDYJXQ8V"></script>'
-    ) == 1
-    assert "window.dataLayer = window.dataLayer || [];" in head
-    assert "function gtag(){dataLayer.push(arguments);}" in head
-    assert "gtag('js', new Date());" in head
-    assert head.count("gtag('config', 'G-XZLDYJXQ8V');") == 1
+    assert "googletagmanager.com" not in page
+    assert 'src="/static/js/analytics-consent.js"' in head
+    assert 'id="analytics-accept"' in page
+    assert 'id="analytics-reject"' in page
+    assert 'id="analytics-settings"' in page
 
 
 def test_policy_link_is_present_for_accounts_and_offline_downloads(offline_client):
@@ -88,3 +88,4 @@ def test_policy_link_is_present_for_accounts_and_offline_downloads(offline_clien
     assert 'class="footer-link" href="/privacy-policy">Privacy Policy</a>' in downloaded["html"]
     assert "googletagmanager.com" not in downloaded["html"]
     assert "gtag('config'" not in downloaded["html"]
+    assert "analytics-consent.js" not in downloaded["html"]

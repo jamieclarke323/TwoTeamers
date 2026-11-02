@@ -1,0 +1,21 @@
+.analytics-consent {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: min(36rem, calc(100% - 2rem));
+  max-height: 85vh;
+  overflow: auto;
+  padding: 1.25rem;
+  border: 2px solid #b8ef41;
+  border-radius: 12px;
+  background: #151811;
+  color: #fff;
+  box-shadow: 0 4px 24px #0008;
+}
+.analytics-consent[hidden] { display: none; }
+.analytics-consent h2 { margin-top: 0; }
+.analytics-consent a { color: #b8ef41; }
+.analytics-consent-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+.analytics-consent-actions .button { flex: 1; }

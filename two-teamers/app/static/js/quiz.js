@@ -29,7 +29,7 @@
   const request = async (path, body) => {
     try {
       if (window.OfflineQuiz) return await window.OfflineQuiz.request(path, body);
-      const response = await fetch(`/quiz/${data.quizId}/${path}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+      const response = await window.ttFetch(`/quiz/${data.quizId}/${path}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
       return await response.json();
     } catch (error) {
       return {status: "error", message: window.OfflineQuiz ? error.message : "Could not connect. Reconnect to continue, or download a game using Play offline while online."};

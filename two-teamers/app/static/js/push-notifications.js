@@ -3,6 +3,7 @@
   const status = document.getElementById("push-status");
   const preferencesForm = document.getElementById("push-preferences");
   const successToast = document.getElementById("push-success-toast");
+  const removeDeviceButton = document.getElementById("push-remove-device");
   if (!button || !status || !preferencesForm) return;
 
   const publicKey = button.dataset.publicKey;
@@ -71,11 +72,13 @@
 
   const syncButton = (subscription) => {
     currentSubscription = subscription;
+    removeDeviceButton.hidden = !subscription;
     if (subscription) {
       button.textContent = "This device is subscribed";
       button.disabled = true;
     } else {
       button.textContent = "Enable Notifications";
+      button.disabled = false;
     }
   };
 
@@ -143,7 +146,7 @@
       currentSubscription = subscription;
       const preferences = await postJson("/push/subscribe", subscription.toJSON());
       syncPreferences(preferences);
-      button.disabled = true;
+      syncButton(subscription);
       setStatus("Notifications are enabled on this device.");
     } catch (error) {
       button.disabled = false;
@@ -152,6 +155,23 @@
         : "Enable Notifications";
       setStatus(error.message || "Notifications could not be updated. Please try again.");
       console.error("Could not enable push notifications.", error);
+    }
+  });
+
+  removeDeviceButton.addEventListener("click", async () => {
+    if (!currentSubscription) return;
+    removeDeviceButton.disabled = true;
+    button.disabled = true;
+    try {
+      await currentSubscription.unsubscribe();
+      await postJson("/push/unsubscribe", {endpoint: currentSubscription.endpoint});
+      syncButton(null);
+      setStatus("This device's subscription has been removed. Other devices and preferences are unchanged.");
+    } catch (error) {
+      setStatus(error.message || "The device subscription could not be removed. Please retry.");
+      console.error("Could not remove push subscription.", error);
+    } finally {
+      removeDeviceButton.disabled = false;
     }
   });
 

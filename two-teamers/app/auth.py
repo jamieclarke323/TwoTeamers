@@ -11,9 +11,11 @@ from flask import Blueprint, current_app, flash, g, jsonify, redirect, render_te
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db, transfer_guest_progress
+from .security import check_auth_rate_limit
 
 bp = Blueprint("auth", __name__)
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+UNKNOWN_USER_PASSWORD_HASH = generate_password_hash(secrets.token_urlsafe(32))
 
 
 @bp.before_app_request
@@ -60,11 +62,16 @@ def signup():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         supported_team = request.form.get("supported_team", "")
+        limited = check_auth_rate_limit("signup", email)
+        if limited is not None:
+            return limited
         error = None
-        if not EMAIL_PATTERN.match(email):
+        if len(email) > 254 or not EMAIL_PATTERN.match(email):
             error = "Enter a valid email address."
         elif len(password) < 8:
             error = "Password must be at least 8 characters."
+        elif len(password) > 1024:
+            error = "Password must be no more than 1024 characters."
         elif supported_team not in _team_choices():
             error = "Choose the team you support, or select Neutral."
         elif get_db().execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
@@ -96,8 +103,17 @@ def login():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
+        limited = check_auth_rate_limit("login", email)
+        if limited is not None:
+            return limited
+        if len(email) > 254 or len(password) > 1024:
+            flash("Email or password is incorrect.", "error")
+            return render_template("auth.html", mode="login")
         user = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-        if user is None or not check_password_hash(user["password_hash"], password):
+        password_matches = check_password_hash(
+            user["password_hash"] if user is not None else UNKNOWN_USER_PASSWORD_HASH, password
+        )
+        if user is None or not password_matches:
             flash("Email or password is incorrect.", "error")
         else:
             visitor_id = session.get("visitor_id")
@@ -158,7 +174,7 @@ def profile():
 def _validate_push_csrf():
     expected = session.get("push_csrf_token")
     supplied = request.headers.get("X-CSRF-Token", "")
-    if not expected or not secrets.compare_digest(expected, supplied):
+    if not expected or not secrets.compare_digest(expected.encode(), supplied.encode()):
         return jsonify({"error": "Refresh the page and try again."}), 403
     return None
 

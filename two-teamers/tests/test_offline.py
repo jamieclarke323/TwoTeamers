@@ -28,6 +28,7 @@ def offline_app(tmp_path, monkeypatch):
     ))
     return create_app({
         "TESTING": True, "SECRET_KEY": "offline-test-secret",
+        "CSRF_ENABLED": False, "AUTH_RATE_LIMIT_ENABLED": False,
         "DATABASE": str(tmp_path / "offline.sqlite"), "BYPASS_AVAILABILITY": True,
         "REWARDED_ADS_ENABLED": False,
     })

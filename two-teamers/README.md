@@ -14,7 +14,17 @@ Open `http://127.0.0.1:5000`. Set `BYPASS_AVAILABILITY=1` to test every fixture 
 
 All regular and featured games unlock at **00:00 UK time on their fixture date**, regardless of kick-off time. For example, a fixture dated 24 October 2026 opens at 00:00 on 24 October, not the following night. The home page shows an upcoming supported-team fixture greyed out with a padlock until it opens. Games close 100 hours after unlocking.
 
-Production should set `SECRET_KEY`, `SESSION_COOKIE_SECURE=1`, and persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values.
+Production must set a unique random `SECRET_KEY` of at least 32 characters and `SESSION_COOKIE_SECURE=1`, plus persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values. Unsafe production session settings fail at startup. `python run.py` explicitly opts into local development; production must use WSGI, not the debug server. Keep an existing safe secret stable: rotating it invalidates sessions and offline sync tokens.
+
+## Security, backups and recovery
+
+Start with [owner actions](../docs/OWNER_ACTION_REQUIRED.md) and the [PythonAnywhere deployment checklist](../docs/DEPLOYMENT_SECURITY_CHECKLIST.md). The [security audit](../docs/SECURITY_AUDIT.md), [privacy assessment](../docs/PRIVACY_COMPLIANCE_AUDIT.md), [risk register](../docs/RISK_REGISTER.md) and [incident runbook](../docs/INCIDENT_RESPONSE.md) distinguish local fixes from unverified hosting/legal obligations.
+
+CSRF tokens protect account and game writes, with signed owner-bound tokens protecting offline sync. Authentication attempts are rate-limited in SQLite, and baseline security headers apply. Reload old online tabs after deploying the new request helper. Analytics permission does not authorise the optional AdSense integration.
+
+`backup_database.py --destination /private/path/outside/repository --if-due` creates a verified SQLite snapshot when the newest matching verified backup is at least seven days old. Schedule that command daily in PythonAnywhere; scheduling and off-host copies require owner action. The script does not start the app or alter the source database. It includes the default VAPID key if present; pass `--private-key` for a custom key. `--verify <backup-directory>` checks a snapshot; `--restore-from <backup-directory> --restore-to <new-private-file>` creates a non-overwriting recovery copy. Back up the stable Flask secret separately and reconcile erasures/consent before a real restoration.
+
+`cleanup_retention.py` previews proposed cleanup (90-day stale guest/delivery records, seven-day offline session records, one-hour auth buckets). It does not delete by default; `--confirm-delete --backup <fresh-matching-backup-directory>` is required to apply. Approve retention and backup expiry before activating production cleanup; no existing production data or backups have been deleted.
 
 ## Privacy Policy
 
@@ -22,7 +32,9 @@ The public `/privacy-policy` page displays the policy, updated in November 2026 
 
 ## Google Analytics
 
-The shared online page header includes the Google tag for measurement ID `G-XZLDYJXQ8V`. Newly downloaded offline quiz pages omit the tag. The tag loads immediately, including during local development; no analytics consent control is implemented here. The site owner is handling consent separately and should put that handling in place before enabling tracking for visitors who require consent.
+Online pages offer equally accessible **Reject analytics** and **Accept analytics** choices. Google Analytics (`G-XZLDYJXQ8V`) is not loaded until acceptance. The choice is stored locally for up to 180 days; **Cookie settings** in the footer lets visitors change it. Withdrawal disables Analytics, removes accessible standard `_ga` cookies and reloads the page. Other open tabs reload when the choice changes. Blocked storage defaults to no automatic tracking; an explicit choice may need repeating on subsequent pages.
+
+The tag disables Google Signals/advertising personalisation signals and sends a page location without its query string. Verify GA Admin retention, enhanced measurement, sharing and transfer settings separately. Newly downloaded offline quiz pages omit Analytics and consent UI. Existing offline downloads and old online tabs may need refreshing after deployment. No advertising or marketing consent is collected.
 
 ## How to play
 

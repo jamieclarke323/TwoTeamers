@@ -65,6 +65,8 @@ def test_app_startup_enables_push_with_persisted_generated_keys(tmp_path, monkey
             "PUSH_VAPID_PUBLIC_KEY": "",
             "PUSH_VAPID_PRIVATE_KEY_FILE": "",
             "SECRET_KEY": "test",
+            "DEVELOPMENT": True,
+            "CSRF_ENABLED": False,
         }
     )
 

@@ -5,16 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Two Teamers{% endblock %}</title>
   {% if not offline_mode %}
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XZLDYJXQ8V"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-XZLDYJXQ8V');
-  </script>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/analytics-consent.css') }}">
+  <script defer src="{{ url_for('static', filename='js/analytics-consent.js') }}"></script>
   {% endif %}
+  <script src="{{ url_for('static', filename='js/security.js') }}"></script>
   <meta name="theme-color" content="#151811">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
   <link rel="icon" href="{{ url_for('static', filename='img/two-teamers-app-icon-2026.png') }}" type="image/png" sizes="768x768">
@@ -27,7 +22,7 @@
     <div class="brand-nav-group">
       <a class="brand" href="{{ url_for('main.home') }}">TWO <span>TEAMERS</span></a>
     </div>
-    {% if offline_mode %}<span>Offline play</span>{% elif g.user %}<div class="account">{% if config.LEADERBOARD_ENABLED %}<a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a>{% endif %}<a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
+    {% if offline_mode %}<span>Offline play</span>{% elif g.user %}<div class="account">{% if config.LEADERBOARD_ENABLED %}<a class="profile-link" href="{{ url_for('main.leaderboard') }}">Leaderboard</a>{% endif %}<a class="profile-link" href="{{ url_for('auth.profile') }}">Profile</a><span>{{ g.user.email }}</span><form action="{{ url_for('auth.logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="logout" type="submit">Log out</button></form></div>{% else %}<div class="account"><a class="profile-link" href="{{ url_for('auth.login') }}">Log in</a><a class="logout" href="{{ url_for('auth.signup') }}">Sign up</a></div>{% endif %}
   </header>
   {% if featured_fixture and not hide_featured_banner %}{% set featured = featured_fixture.quiz %}
   <a class="featured-fixture" href="{{ url_for('main.featured_game') }}" aria-label="Play today's featured fixture: {{ featured.home_team }} vs {{ featured.away_team }}">
@@ -42,7 +37,19 @@
   {% endif %}
   {% if not offline_mode %}{% for category, message in get_flashed_messages(with_categories=true) %}<p role="alert" class="flash {{ category }}">{{ message }}</p>{% endfor %}{% endif %}
   <main class="site-main">{% block content %}{% endblock %}</main>
-  <footer>Two Teamers · English football's shared history <a class="footer-link" href="{{ url_for('main.privacy_policy') }}">Privacy Policy</a></footer>
+  <footer>Two Teamers · English football's shared history <a class="footer-link" href="{{ url_for('main.privacy_policy') }}">Privacy Policy</a>{% if not offline_mode %} <button type="button" class="footer-link" id="analytics-settings">Cookie settings</button>{% endif %}</footer>
+  {% if not offline_mode %}
+  <section class="analytics-consent" id="analytics-consent" aria-labelledby="analytics-consent-heading" hidden>
+    <h2 id="analytics-consent-heading">Optional analytics cookies</h2>
+    <p>May we use Google Analytics to understand visits and improve Two Teamers? Google receives website usage and device information. The game works without analytics. You can change your choice using Cookie settings.</p>
+    <p><a href="{{ url_for('main.privacy_policy') }}">Read our Privacy Policy</a></p>
+    <div class="analytics-consent-actions">
+      <button class="button" type="button" id="analytics-reject">Reject analytics</button>
+      <button class="button" type="button" id="analytics-accept">Accept analytics</button>
+    </div>
+  </section>
+  <p id="analytics-consent-status" role="status" aria-live="polite"></p>
+  {% endif %}
   {% if request.endpoint == 'main.home' or quiz is defined %}{% include "_how_to_play.html" %}{% endif %}
   <script src="{{ url_for('static', filename='js/how-to-play.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offline-storage.js') }}"></script>

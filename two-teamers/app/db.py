@@ -10,6 +10,12 @@ from flask import Flask, current_app, g
 LEGACY_QUIZ_ANSWERS_PATH = Path(__file__).with_name("legacy_quiz_answers.json")
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS auth_attempts (
+    bucket TEXT NOT NULL,
+    attempted_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS auth_attempts_bucket_time_idx
+    ON auth_attempts(bucket, attempted_at);
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE COLLATE NOCASE,

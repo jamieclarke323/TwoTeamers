@@ -52,7 +52,7 @@
         const playable = previous.find((saved) => Date.now() < saved.expiresAt);
         if (playable) {
           await syncSavedGame(playable.id);
-          const response = await fetch(`/quiz/${quizId}/offline-refresh`, {
+          const response = await window.ttFetch(`/quiz/${quizId}/offline-refresh`, {
             method: "POST", headers: {"Content-Type": "application/json"},
             body: JSON.stringify({token: playable.token}),
           });
@@ -66,7 +66,7 @@
           return;
         }
         for (const saved of previous) await syncSavedGame(saved.id);
-        const response = await fetch(`/quiz/${quizId}/offline-package`, {method: "POST"});
+        const response = await window.ttFetch(`/quiz/${quizId}/offline-package`, {method: "POST"});
         if (!response.ok) throw new Error("This game could not be downloaded. Check your connection and its availability.");
         const downloaded = await response.json();
         await OfflineStorage.update(downloaded.package.id, () => ({

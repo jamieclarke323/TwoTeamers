@@ -8,6 +8,7 @@
   <h1>Profile</h1>
   <p class="profile-email">{{ g.user.email }}</p>
   <form class="auth-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Which team do you support?
       <select name="supported_team" required>
       {% for team in team_choices %}<option value="{{ team }}" {{ 'selected' if team == g.user.supported_team }}>{{ team }}</option>{% endfor %}
@@ -24,6 +25,7 @@
       data-push-configured="{{ 'true' if push_notifications_available else 'false' }}"
       data-has-subscriptions="{{ 'true' if has_push_subscriptions else 'false' }}"
       {% if not push_notifications_available %}disabled{% endif %}>Enable Notifications</button>
+    <button class="button" type="button" id="push-remove-device" hidden>Remove notifications from this device</button>
     <p id="push-status" role="status" aria-live="polite">
       {% if not push_notifications_available %}{{ push_config_error or "The site owner needs to finish notification setup." }}
       {% elif has_push_subscriptions %}Notifications are active on at least one device.

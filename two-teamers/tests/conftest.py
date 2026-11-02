@@ -14,6 +14,8 @@ from app import create_app
 def app(tmp_path):
     return create_app({
         "TESTING": True,
+        "CSRF_ENABLED": False,
+        "AUTH_RATE_LIMIT_ENABLED": False,
         "DATABASE": str(tmp_path / "test.sqlite"),
         "DATA_DIR": str(ROOT),
         "XLSX_PATH": str(ROOT / "2627DataSource.xlsx"),
