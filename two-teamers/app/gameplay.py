@@ -1,10 +1,12 @@
 from .matching import MatchResult, match_guess
+from .data_loader import CLUE_TYPES
 
 
 def public_player(quiz, player, index):
     return {
         "index": index, "name": player.name,
         "nationality": player.nationality,
+        "position": player.position,
         "home_team": quiz.home_team, "away_team": quiz.away_team,
         "home_years": player.home.years, "home_apps": player.home.apps, "home_goals": player.home.goals,
         "away_years": player.away.years, "away_apps": player.away.apps, "away_goals": player.away.goals,
@@ -87,7 +89,7 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
         return {"status": "wrong", "message": "Not a match. Keep trying."}, 200
 
     if action == "clue":
-        types = [value for value in data.get("types", []) if value in ("years", "initials", "nationality")]
+        types = [value for value in data.get("types", []) if value in CLUE_TYPES]
         if not types:
             return {"status": "error", "message": "Choose at least one clue."}, 400
         answers = answer_data(state)
@@ -104,8 +106,10 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
             return {"status": "error", "message": "Choose a valid player."}, 400
         unavailable = set(state["solved"]) | revealed_indices(state)
         indices = [index for index in indices if 0 <= index < len(quiz.players) and index not in unavailable]
-        if "nationality" in types and not any(quiz.players[index].has_nationality for index in indices):
-            types.remove("nationality")
+        types = [
+            kind for kind in types if kind not in ("nationality", "position")
+            or any(quiz.players[index].has_clue(kind) for index in indices)
+        ]
         if not types:
             return {"status": "error", "message": "That clue is not available."}, 400
         clues = []
@@ -113,15 +117,14 @@ def apply_action(quiz, state, action, data, ads_enabled=False):
             player = quiz.players[index]
             player_clues = answers["clues"].setdefault(str(index), [])
             for kind in types:
-                if kind == "nationality" and not player.has_nationality:
+                if not player.has_clue(kind):
                     continue
                 if kind not in player_clues:
                     player_clues.append(kind)
             clues.append({
                 "index": index,
                 **{kind: player.clue_value(kind, quiz.home_team, quiz.away_team)
-                   for kind in player_clues if kind in ("years", "initials", "nationality")
-                   and (kind != "nationality" or player.has_nationality)},
+                   for kind in player_clues if kind in CLUE_TYPES and player.has_clue(kind)},
             })
         return {"status": "ok", "clues": clues}, 200
 

@@ -131,7 +131,7 @@
       span.textContent = String(value);
       return span.innerHTML;
     };
-    const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality"};
+    const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality", position: "Position"};
     for (const player of pack.players) {
       const card = document.querySelector(`.player-card[data-index="${player.index}"]`);
       const revealed = (saved.state.answer_data.revealed || []).includes(player.index)
@@ -142,6 +142,7 @@
       card.disabled = found;
       if (found) {
         card.innerHTML = `<strong>${escape(player.name)}</strong><span>${escape(pack.home)}: ${escape(player.home_years)}</span><span>${escape(pack.away)}: ${escape(player.away_years)}</span>${player.nationality ? `<span>${escape(player.nationality)}</span>` : ""}`;
+        if (player.position) card.insertAdjacentHTML("beforeend", `<span>Position: ${escape(player.position)}</span>`);
       } else {
         const clues = saved.state.answer_data.clues[String(player.index)] || [];
         card.innerHTML = `<span class="card-number">${player.index + 1}</span><strong>Unknown player</strong><span class="clue-holder">${

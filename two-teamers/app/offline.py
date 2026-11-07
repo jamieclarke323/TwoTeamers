@@ -8,7 +8,7 @@ from uuid import uuid4
 from flask import Blueprint, current_app, jsonify, redirect, request, url_for
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from .data_loader import QUIZ_TIMEZONE
+from .data_loader import CLUE_TYPES, QUIZ_TIMEZONE
 from .db import get_db, get_progress, save_progress
 from .gameplay import apply_action, public_player
 
@@ -84,8 +84,7 @@ def _download_response(quiz, claims, state, token):
                 "answers": player.acceptable_answers,
                 "clues": {
                     kind: player.clue_value(kind, quiz.home_team, quiz.away_team)
-                    for kind in ("years", "initials", "nationality")
-                    if kind != "nationality" or player.has_nationality
+                    for kind in CLUE_TYPES if player.has_clue(kind)
                 },
             }
             for index, player in enumerate(quiz.players)
@@ -198,7 +197,7 @@ def sync_quiz(quiz_id):
                 if claims["adsEnabled"] or current_app.config["REWARDED_ADS_ENABLED"]:
                     raise ValueError("Ad-gated clues cannot be revealed offline.")
                 if not isinstance(body.get("types"), list) or any(
-                    kind not in ("years", "initials", "nationality") for kind in body["types"]
+                    kind not in CLUE_TYPES for kind in body["types"]
                 ):
                     raise ValueError("Invalid offline clue.")
             result, status = apply_action(quiz, state, action, body)

@@ -15,6 +15,7 @@ QUIZ_TIMEZONE = ZoneInfo("Europe/London")
 UNLOCK_HOUR = 0
 FEATURED_UNLOCK = time(0, 0)
 PLAYABLE_HOURS = 48
+CLUE_TYPES = ("years", "initials", "nationality", "position")
 MIN_ELIGIBLE_SEASON_START = 1999
 
 LEAGUE_FILES = {
@@ -173,6 +174,7 @@ class ClubPlayer:
     goals: str | int
     nationality: str = ""
     player_id: str = ""
+    position: str = ""
 
     @property
     def identity(self) -> str:
@@ -209,7 +211,24 @@ class QuizPlayer:
             return self.initials
         if clue_type == "nationality":
             return self.nationality
+        if clue_type == "position":
+            return self.position
         raise ValueError(f"Unknown clue type: {clue_type}")
+
+    def has_clue(self, clue_type: str) -> bool:
+        if clue_type == "nationality":
+            return self.has_nationality
+        if clue_type == "position":
+            return bool(self.position)
+        return clue_type in ("years", "initials")
+
+    @property
+    def position(self) -> str:
+        positions = {}
+        for position in (self.home.position, self.away.position):
+            if position:
+                positions.setdefault(position.casefold(), position)
+        return " / ".join(positions.values())
 
     @property
     def nationality(self) -> str:
@@ -312,8 +331,9 @@ def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
     records: dict[str, list[ClubPlayer]] = defaultdict(list)
     nationality_column: int | None = 6
     player_id_column: int | None = None
+    position_column: int | None = None
     found_header = False
-    for raw_row in sheet.iter_rows(max_col=8, values_only=True):
+    for raw_row in sheet.iter_rows(max_col=9, values_only=True):
         row = tuple(raw_row) + (None,) * max(0, 7 - len(raw_row))
         name = str(row[0] or "").strip()
         years = row[1]
@@ -322,6 +342,7 @@ def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
                 columns = {str(value or "").strip(): index for index, value in enumerate(row)}
                 nationality_column = columns.get("Nationality")
                 player_id_column = columns.get("PlayerId")
+                position_column = columns.get("Position(s)", columns.get("Position"))
                 found_header = True
             continue
         if not name or years is None:
@@ -345,6 +366,12 @@ def _stats_players(sheet) -> tuple[dict[str, ClubPlayer], set[str]]:
             goals=clean_value(row[4]),
             nationality=nationality,
             player_id=player_id,
+            position=(
+                str(row[position_column] or "").strip()
+                if position_column is not None and position_column < len(row)
+                and str(row[position_column] or "").strip() not in ("-", "Unverified")
+                else ""
+            ),
         )
         records[player.identity].append(player)
     unique = {}
@@ -418,6 +445,7 @@ def load_club_players(xlsx_path: str | Path, clubs: set[str]) -> dict[str, dict[
                         goals=stats.goals,
                         nationality=stats.nationality,
                         player_id=stats.player_id,
+                        position=stats.position,
                     )
             rosters[club] = roster
     finally:

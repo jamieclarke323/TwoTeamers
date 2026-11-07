@@ -18,7 +18,7 @@
   const dismissShareButton = document.getElementById("dismiss-share-result");
   const shareAgainButton = document.getElementById("share-results");
   const clipboardToast = document.getElementById("clipboard-toast");
-  const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality"};
+  const clueLabels = {years: "Years", initials: "Initials", nationality: "Nationality", position: "Position"};
   let clueTarget = "all";
   let exactTimer;
   let shareText = data.shareText || "";
@@ -41,6 +41,7 @@
     element.classList.add("found"); element.disabled = true;
     if (revealed) element.classList.add("revealed");
     element.innerHTML = `<strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(player.home_team)}: ${escapeHtml(player.home_years)}</span><span>${escapeHtml(player.away_team)}: ${escapeHtml(player.away_years)}</span>${player.nationality ? `<span>${escapeHtml(player.nationality)}</span>` : ""}`;
+    if (player.position) element.insertAdjacentHTML("beforeend", `<span>Position: ${escapeHtml(player.position)}</span>`);
   };
   const escapeHtml = (value) => { const element = document.createElement("span"); element.textContent = String(value); return element.innerHTML; };
   const updateShareScore = (solved, total) => {
@@ -143,18 +144,21 @@
     exactTimer = setTimeout(async () => { const result = await request("exact", {guess}); if (input.value.trim() === guess) applyGuess(result); }, 250);
   });
   form.addEventListener("submit", async (event) => { event.preventDefault(); const guess = input.value.trim(); if (guess) applyGuess(await request("guess", {guess})); });
-  const updateNationalityOption = () => {
+  const updateClueOptions = () => {
     const giveUpAnswer = document.getElementById("give-up-answer");
     if (giveUpAnswer) giveUpAnswer.hidden = clueTarget === "all";
-    const option = document.getElementById("nationality-clue-option");
-    if (!option) return;
-    const available = data.nationalityPlayerIndices || [];
-    option.hidden = clueTarget === "all"
-      ? !available.some((index) => !card(index)?.classList.contains("found"))
-      : !available.includes(clueTarget);
+    for (const kind of ["nationality", "position"]) {
+      const option = document.getElementById(`${kind}-clue-option`);
+      if (!option) continue;
+      const available = data[`${kind}PlayerIndices`] || [];
+      option.hidden = clueTarget === "all"
+        ? !available.some((index) => !card(index)?.classList.contains("found"))
+        : !available.includes(clueTarget);
+      if (option.hidden) option.querySelector("input").checked = false;
+    }
   };
-  document.getElementById("player-grid").addEventListener("click", (event) => { const target = event.target.closest(".player-card:not(.found)"); if (target) { clueTarget = Number(target.dataset.index); updateNationalityOption(); dialog.showModal(); } });
-  document.getElementById("all-clues").addEventListener("click", () => { clueTarget = "all"; updateNationalityOption(); dialog.showModal(); });
+  document.getElementById("player-grid").addEventListener("click", (event) => { const target = event.target.closest(".player-card:not(.found)"); if (target) { clueTarget = Number(target.dataset.index); updateClueOptions(); dialog.showModal(); } });
+  document.getElementById("all-clues").addEventListener("click", () => { clueTarget = "all"; updateClueOptions(); dialog.showModal(); });
   document.getElementById("give-up-answer")?.addEventListener("click", async (event) => {
     event.preventDefault();
     if (clueTarget === "all") return;

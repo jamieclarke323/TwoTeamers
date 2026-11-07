@@ -314,13 +314,13 @@ def _render_quiz(quiz, is_home_game: bool = False, offline_package=None):
     revealed = revealed_indices(state)
     visible = solved | revealed
     saved_clues = _answer_data(state)["clues"]
-    clue_labels = {"years": "Years", "initials": "Initials", "nationality": "Nationality"}
+    clue_labels = {"years": "Years", "initials": "Initials", "nationality": "Nationality", "position": "Position"}
     players = [
         {"found": index in visible or state["given_up"],
          "revealed": index in revealed or (state["given_up"] and index not in solved),
          "clues": [(clue_labels[kind], player.clue_value(kind, quiz.home_team, quiz.away_team))
                    for kind in saved_clues.get(str(index), [])
-                   if kind in clue_labels and (kind != "nationality" or player.has_nationality)],
+                   if kind in clue_labels and player.has_clue(kind)],
          **(_public_player(quiz, player, index) if index in visible or state["given_up"] else {"index": index})}
         for index, player in enumerate(quiz.players)
     ]
@@ -337,6 +337,9 @@ def _render_quiz(quiz, is_home_game: bool = False, offline_package=None):
         ads_enabled=ads_enabled,
         nationality_player_indices=[
             index for index, player in enumerate(quiz.players) if player.has_nationality
+        ],
+        position_player_indices=[
+            index for index, player in enumerate(quiz.players) if player.has_clue("position")
         ],
         clues_locked=ads_enabled and not _answer_data(state).get("clue_unlocked", False),
         adsense_client_id=current_app.config["ADSENSE_CLIENT_ID"],

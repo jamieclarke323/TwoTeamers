@@ -50,6 +50,7 @@
           <span>{{ team1 }}: {{ player.home.years }}</span>
           <span>{{ team2 }}: {{ player.away.years }}</span>
           {% if player.nationality %}<span>{{ player.nationality }}</span>{% endif %}
+          {% if player.position %}<span>Position: {{ player.position }}</span>{% endif %}
         </div>
         {% endfor %}
       </div>

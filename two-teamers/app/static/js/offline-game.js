@@ -88,7 +88,7 @@
     }
     if (action === "clue") {
       if (pack.adsEnabled) return {status: "ad_required", message: "Connect and return to online play to unlock ad-gated clues."};
-      const types = (body.types || []).filter((kind) => ["years", "initials", "nationality"].includes(kind));
+      const types = (body.types || []).filter((kind) => ["years", "initials", "nationality", "position"].includes(kind));
       if (!types.length) return {status: "error", message: "Choose at least one clue."};
       if (body.index != null && body.index !== "all" && !/^[+-]?\d+$/.test(String(body.index).trim())) {
         return {status: "error", message: "Choose a valid player."};
@@ -96,8 +96,10 @@
       const indices = pack.players.map((_, index) => index).filter((index) =>
         !state.solved.includes(index) && !(state.answer_data.revealed || []).includes(index)
         && (body.index == null || body.index === "all" || index === Number(body.index)));
-      if (types.includes("nationality") && !indices.some((index) => pack.players[index].clues.nationality)) {
-        types.splice(types.indexOf("nationality"), 1);
+      for (const kind of ["nationality", "position"]) {
+        if (types.includes(kind) && !indices.some((index) => pack.players[index].clues[kind])) {
+          types.splice(types.indexOf(kind), 1);
+        }
       }
       if (!types.length) return {status: "error", message: "That clue is not available."};
       start();
