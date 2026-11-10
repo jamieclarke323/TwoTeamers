@@ -72,6 +72,20 @@ def test_initials_are_derived_from_each_name_part():
     assert player("Patrick van Aanholt").initials == "P.V.A."
 
 
+@pytest.mark.parametrize("name, expected", [
+    ("Bradley Wright-Phillips", "B.W-P."),
+    ("Tal Ben Haim", "T.B.H."),
+    ("Jean-Philippe Mateta", "J-P.M."),
+    ("Alex Oxlade-Chamberlain", "A.O-C."),
+    ("N'Golo Kante", "N.K."),
+    ("  Bradley   Wright-Phillips  ", "B.W-P."),
+])
+def test_initials_preserve_hyphenated_name_parts(name, expected):
+    p = player(name)
+    assert p.initials == expected
+    assert p.clue_value("initials", "Home", "Away") == expected
+
+
 def test_nationality_clue_uses_flags_and_accepts_either_club_value():
     home = ClubPlayer("Player Name", "2020", 1, 0, "France")
     away = ClubPlayer("Player Name", "2021", 2, 1, "France")

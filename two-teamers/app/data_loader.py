@@ -202,7 +202,10 @@ class QuizPlayer:
             if name_parts:
                 candidates.append(name_parts[-1])
         self.acceptable_answers = list(dict.fromkeys(candidates))
-        self.initials = "".join(f"{part[0].upper()}." for part in parts if part)
+        self.initials = "".join(
+            "-".join(segment[0].upper() for segment in part.split("-") if segment) + "."
+            for part in parts
+        )
 
     def clue_value(self, clue_type: str, home_team: str, away_team: str) -> str:
         if clue_type == "years":

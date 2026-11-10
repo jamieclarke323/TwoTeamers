@@ -381,6 +381,29 @@ def test_relaxed_long_name_threshold_accepts_submission_but_not_auto_exact(offli
     assert response.json["solved_count"] == 1
 
 
+@pytest.mark.parametrize("name, expected", [
+    ("Bradley Wright-Phillips", "B.W-P."),
+    ("Tal Ben Haim", "T.B.H."),
+])
+@pytest.mark.parametrize("target", [0, "all"])
+def test_initials_preserve_hyphens_online_and_offline(offline_app, offline_client, name, expected, target):
+    quiz = offline_app.config["QUIZZES"][0]
+    original = quiz.players[0]
+    quiz.players[0] = QuizPlayer(name, original.home, original.away)
+    package = _download(offline_client)["package"]
+    assert package["players"][0]["clues"]["initials"] == expected
+    body = {"types": ["initials"], "index": target}
+    assert _sync(offline_client, package, [
+        _event(package, 1, "clue", body),
+    ]).status_code == 200
+    response = offline_client.post("/quiz/offline-test/clue", json=body)
+    assert response.json["clues"][0]["initials"] == expected
+    assert f"<strong>Initials:</strong> {expected}" in offline_client.get(
+        "/quiz/offline-test"
+    ).get_data(as_text=True)
+    assert _state(offline_app, offline_client)["answer_data"]["clues"]["0"] == ["initials"]
+
+
 def test_individual_giveup_keeps_remaining_scoring_and_shares_cross(offline_app, offline_client):
     url = "/quiz/offline-test"
     result = offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})
