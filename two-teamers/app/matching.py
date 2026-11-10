@@ -9,6 +9,9 @@ from rapidfuzz import fuzz
 
 CORRECT_THRESHOLD = 90
 NEAR_THRESHOLD = 70
+LONG_ANSWER_LENGTH = 9
+LONG_CORRECT_THRESHOLD = 78
+LONG_NEAR_THRESHOLD = 65
 MIN_GUESS_LENGTH = 3
 TRANSLITERATIONS = str.maketrans({"ð": "d", "Ð": "d", "þ": "th", "Þ": "th", "æ": "ae", "Æ": "ae", "ø": "o", "Ø": "o", "ł": "l", "Ł": "l"})
 
@@ -42,18 +45,24 @@ def match_guess(guess: str, players, solved_indices: set[int]) -> GuessOutcome:
 
     best_index = None
     best_score = 0
+    best_rank = 0
     for index, player in enumerate(players):
         if index in solved_indices:
             continue
         answers = [normalise(answer) for answer in player.acceptable_answers]
         if guess_normalised in answers:
             return GuessOutcome(MatchResult.EXACT, index, 100)
-        score = max((round(fuzz.ratio(guess_normalised, answer)) for answer in answers), default=0)
-        if score > best_score:
-            best_index, best_score = index, score
+        for answer in answers:
+            score = round(fuzz.ratio(guess_normalised, answer))
+            long_answer = len(answer.replace(" ", "")) >= LONG_ANSWER_LENGTH
+            correct = LONG_CORRECT_THRESHOLD if long_answer else CORRECT_THRESHOLD
+            near = LONG_NEAR_THRESHOLD if long_answer else NEAR_THRESHOLD
+            rank = 2 if score >= correct else 1 if score >= near else 0
+            if (rank, score) > (best_rank, best_score):
+                best_index, best_score, best_rank = index, score, rank
 
-    if best_index is not None and best_score >= CORRECT_THRESHOLD:
+    if best_index is not None and best_rank == 2:
         return GuessOutcome(MatchResult.CORRECT, best_index, best_score)
-    if best_index is not None and best_score >= NEAR_THRESHOLD:
+    if best_index is not None and best_rank == 1:
         return GuessOutcome(MatchResult.NEAR, best_index, best_score)
     return GuessOutcome(MatchResult.WRONG, None, best_score)

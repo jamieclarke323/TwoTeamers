@@ -372,6 +372,15 @@ def test_online_and_offline_sequences_produce_identical_progress(offline_app, of
     assert _state(offline_app, online) == _state(offline_app, offline_client)
 
 
+def test_relaxed_long_name_threshold_accepts_submission_but_not_auto_exact(offline_client):
+    assert offline_client.post(
+        "/quiz/offline-test/exact", json={"guess": "Gudmanson"}
+    ).json["status"] == "not_exact"
+    response = offline_client.post("/quiz/offline-test/guess", json={"guess": "Gudmanson"})
+    assert response.json["status"] == "correct"
+    assert response.json["solved_count"] == 1
+
+
 def test_individual_giveup_keeps_remaining_scoring_and_shares_cross(offline_app, offline_client):
     url = "/quiz/offline-test"
     result = offline_client.post(f"{url}/giveup-answer", json={"index": 0, "confirm": True})

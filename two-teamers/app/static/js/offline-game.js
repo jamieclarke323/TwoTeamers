@@ -28,17 +28,25 @@
     const value = normalise(guess, combiningMarks);
     if (value.replace(/ /g, "").length < 3) return {result: "wrong", index: null, score: 0};
     let best = {index: null, score: 0};
+    let bestRank = 0;
     for (let index = 0; index < players.length; index += 1) {
       if (solved.includes(index)) continue;
       const answers = players[index].answers.map((answer) => normalise(answer, combiningMarks));
       if (answers.includes(value)) return {result: "exact", index, score: 100};
-      const score = Math.max(0, ...answers.map((answer) => ratio(value, answer)));
-      if (score > best.score) best = {index, score};
+      for (const answer of answers) {
+        const score = ratio(value, answer);
+        const longAnswer = answer.replace(/ /g, "").length >= 9;
+        const rank = score >= (longAnswer ? 78 : 90) ? 2
+          : score >= (longAnswer ? 65 : 70) ? 1 : 0;
+        if (rank > bestRank || (rank === bestRank && score > best.score)) {
+          best = {index, score};
+          bestRank = rank;
+        }
+      }
     }
     return {
-      result: best.index !== null && best.score >= 90 ? "correct"
-        : best.index !== null && best.score >= 70 ? "near" : "wrong",
-      index: best.score >= 70 ? best.index : null, score: best.score,
+      result: bestRank === 2 ? "correct" : bestRank === 1 ? "near" : "wrong",
+      index: bestRank > 0 ? best.index : null, score: best.score,
     };
   };
   const share = (pack, state) => [

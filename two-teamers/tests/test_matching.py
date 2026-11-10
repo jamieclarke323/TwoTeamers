@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+
+import pytest
+
 from app.data_loader import ClubPlayer, QuizPlayer, nationality_flag
 from app.matching import MatchResult, match_guess, normalise
 
@@ -16,9 +20,47 @@ def test_exact_name_is_correct():
     assert match_guess("Gudmundsson", [player()], set()).result == MatchResult.EXACT
 
 
-def test_ninety_percent_is_awarded_but_seventy_is_only_near():
+def test_long_surnames_accept_more_spelling_differences():
     assert match_guess("Gudmundson", [player()], set()).result == MatchResult.CORRECT
-    assert match_guess("Gudmanson", [player()], set()).result == MatchResult.NEAR
+    assert match_guess("Gudmanson", [player()], set()).result == MatchResult.CORRECT
+
+
+@pytest.mark.parametrize("answer, correct, near", [
+    ("abcdefgh", 90, 70), ("abcdefghi", 78, 65),
+    ("abcd efgh", 90, 70), ("abcd efghi", 78, 65),
+    ("ábcdefghi", 78, 65), ("O'abcdefg", 90, 70),
+])
+def test_threshold_boundaries_use_cleaned_answer_length(monkeypatch, answer, correct, near):
+    p = SimpleNamespace(acceptable_answers=[answer])
+    for score, expected in [
+        (correct, MatchResult.CORRECT), (correct - 1, MatchResult.NEAR),
+        (near, MatchResult.NEAR), (near - 1, MatchResult.WRONG),
+    ]:
+        monkeypatch.setattr("app.matching.fuzz.ratio", lambda *args: score)
+        assert match_guess("testguess", [p], set()).result == expected
+
+
+def test_qualifying_long_variant_is_not_masked_by_higher_short_variant(monkeypatch):
+    players = [SimpleNamespace(acceptable_answers=["short"]), SimpleNamespace(acceptable_answers=["longanswer"])]
+    monkeypatch.setattr("app.matching.fuzz.ratio", lambda guess, answer: 85 if answer == "short" else 78)
+    outcome = match_guess("testguess", players, set())
+    assert outcome.result == MatchResult.CORRECT
+    assert outcome.player_index == 1
+    assert match_guess("short", players, set()).result == MatchResult.EXACT
+    assert match_guess("testguess", players, {1}).result == MatchResult.NEAR
+
+
+@pytest.mark.parametrize("guess, answer, expected, score", [
+    ("abcdefgxx", "abcdefghi", MatchResult.CORRECT, 78),
+    ("abcdefxxx", "abcdefghi", MatchResult.NEAR, 67),
+    ("abcdexxxx", "abcdefghi", MatchResult.WRONG, 56),
+    ("abcdefgx", "abcdefgh", MatchResult.NEAR, 88),
+    ("abcdefghx", "abcdefgh", MatchResult.CORRECT, 94),
+])
+def test_real_similarity_uses_answer_not_guess_length(guess, answer, expected, score):
+    outcome = match_guess(guess, [SimpleNamespace(acceptable_answers=[answer])], set())
+    assert outcome.result == expected
+    assert outcome.score == score
 
 
 def test_fuzzy_correct_is_distinct_from_exact_for_auto_submit():

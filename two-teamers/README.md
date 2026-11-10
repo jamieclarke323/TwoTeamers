@@ -4,6 +4,8 @@ A Flask quiz covering players who represented both clubs in a fixture. The curre
 
 ## Run locally
 
+Submitted answers use rounded RapidFuzz similarity scores. Each cleaned acceptable name variant with nine or more letters/digits (excluding spaces) accepts scores of 78 or above, reports "Close but not quite." at 65–77, and rejects lower scores. Shorter variants retain the 90/70 thresholds. Exact matches always take priority; otherwise a qualifying correct match takes priority over a near match, then the higher score wins within each category. The same rules apply offline and during offline sync. Automatic acceptance while typing remains exact-only.
+
 ```bash
 python3.13 -m venv .venv
 .venv/bin/pip install -r requirements.txt
