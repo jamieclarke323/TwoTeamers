@@ -7,6 +7,7 @@ from uuid import uuid4
 from flask import Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 
 from .auth import login_required
+from .admin_access import require_admin_password
 from .badges import BADGE_FILES
 from .data_loader import QUIZ_TIMEZONE, _shared_players, slugify
 from .db import get_db, get_progress, progress_counts, save_progress
@@ -231,9 +232,14 @@ def league_fixtures(league_id):
     )
 
 
-@bp.route("/admin", methods=["GET"])
-@bp.route("/admin/matchup", methods=["GET"])
+@bp.route("/admin", methods=["GET", "POST"])
+@bp.route("/admin/matchup", methods=["GET", "POST"])
 def admin_matchup():
+    gate = require_admin_password()
+    if gate is not None:
+        return gate
+    if request.method == "POST":
+        return redirect(url_for("main.admin_matchup", **request.args))
     all_rosters = current_app.config.get("ALL_ROSTERS", {})
     clubs = current_app.config.get("ALL_CLUBS", sorted(all_rosters.keys()))
     team1 = request.args.get("team1", "").strip()

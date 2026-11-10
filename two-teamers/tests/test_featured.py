@@ -1,6 +1,7 @@
 from dataclasses import replace
 from datetime import datetime, timedelta
 from urllib.parse import quote
+from werkzeug.security import generate_password_hash
 
 from app.badges import BADGE_FILES
 from app.data_loader import QUIZ_TIMEZONE, UNLOCK_HOUR, _featured_club_name, normalise_name
@@ -157,6 +158,8 @@ def test_champions_league_teams_not_on_home_or_teams_page(client):
 
 
 def test_admin_matchup_screen_generates_all_answers(client):
+    client.application.config["ADMIN_PASSWORD_HASH"] = generate_password_hash("test-admin-password")
+    client.post("/admin", data={"password": "test-admin-password"})
     response = client.get("/admin?team1=Charlton+Athletic&team2=Portsmouth")
     assert response.status_code == 200
     assert b"37" in response.data
@@ -167,6 +170,8 @@ def test_admin_matchup_screen_generates_all_answers(client):
 
 
 def test_admin_matchup_does_not_merge_the_two_marcelos(client):
+    client.application.config["ADMIN_PASSWORD_HASH"] = generate_password_hash("test-admin-password")
+    client.post("/admin", data={"password": "test-admin-password"})
     response = client.get("/admin?team1=Real+Madrid&team2=Birmingham+City")
     assert response.status_code == 200
     assert b"Jude Bellingham" in response.data

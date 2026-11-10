@@ -19,6 +19,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__)
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY"),
+        ADMIN_PASSWORD_HASH=os.environ.get("ADMIN_PASSWORD_HASH", ""),
         DEVELOPMENT=False,
         CSRF_ENABLED=True,
         AUTH_RATE_LIMIT_ENABLED=True,

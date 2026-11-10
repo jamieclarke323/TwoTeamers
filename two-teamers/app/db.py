@@ -10,6 +10,11 @@ from flask import Flask, current_app, g
 LEGACY_QUIZ_ANSWERS_PATH = Path(__file__).with_name("legacy_quiz_answers.json")
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS admin_access_attempts (
+    bucket TEXT PRIMARY KEY,
+    failures INTEGER NOT NULL DEFAULT 0,
+    locked_until INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS auth_attempts (
     bucket TEXT NOT NULL,
     attempted_at INTEGER NOT NULL

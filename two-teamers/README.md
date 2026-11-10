@@ -22,6 +22,29 @@ Production must set a unique random `SECRET_KEY` of at least 32 characters and `
 
 ## Security, backups and recovery
 
+### Admin access
+
+Both `/admin` and `/admin/matchup` require the shared admin password, independently of normal account login. Configure `ADMIN_PASSWORD_HASH` with a Werkzeug password hash loaded from a private file outside the repository; never commit the password or its hash. If absent, admin access fails closed with HTTP 503. Successful access lasts one hour and changing the configured hash invalidates existing admin grants. Forms require the existing CSRF token. Five failed password attempts from the same IP address cause a ten-minute lockout (HTTP 429 with `Retry-After`), persisted in SQLite so clearing cookies or changing browser does not reset it. Shared-IP users share the attempt limit. Failed attempts reset after a successful login or expiry of a lockout. HTTPS and a strong password are recommended; a short numeric password is weak even with throttling.
+
+Generate a private hash file on the deployment host using the project's Python:
+
+```python
+import getpass
+import os
+from pathlib import Path
+from werkzeug.security import generate_password_hash
+
+path = Path.home() / ".secrets" / "twoteamers-admin-password-hash"
+path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+password = getpass.getpass("Admin password: ")
+if not password:
+    raise ValueError("An admin password is required.")
+with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as file:
+    file.write(generate_password_hash(password) + "\n")
+```
+
+In WSGI, before calling `create_app()`, load it with `os.environ["ADMIN_PASSWORD_HASH"] = (Path.home() / ".secrets" / "twoteamers-admin-password-hash").read_text().strip()` (import `Path` from `pathlib`). Reload the web app. Back up this private configuration securely; never expose `.secrets` through static mappings.
+
 Start with [owner actions](../docs/OWNER_ACTION_REQUIRED.md) and the [PythonAnywhere deployment checklist](../docs/DEPLOYMENT_SECURITY_CHECKLIST.md). The [security audit](../docs/SECURITY_AUDIT.md), [privacy assessment](../docs/PRIVACY_COMPLIANCE_AUDIT.md), [risk register](../docs/RISK_REGISTER.md) and [incident runbook](../docs/INCIDENT_RESPONSE.md) distinguish local fixes from unverified hosting/legal obligations.
 
 CSRF tokens protect account and game writes, with signed owner-bound tokens protecting offline sync. Authentication attempts are rate-limited in SQLite, and baseline security headers apply. Reload old online tabs after deploying the new request helper. Analytics permission does not authorise the optional AdSense integration.
