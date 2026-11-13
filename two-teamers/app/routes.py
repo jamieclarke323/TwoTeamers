@@ -87,6 +87,7 @@ def _active_matchweek(quizzes):
 
 @bp.route("/")
 def home():
+    now = datetime.now(QUIZ_TIMEZONE)
     daily_quiz = todays_featured_quiz()
     daily_closes_at = (
         datetime.combine(
@@ -96,6 +97,7 @@ def home():
     )
     team_quiz = None
     team_status = None
+    team_next_starts_at = None
     if g.user is not None:
         fixtures = sorted(
             (quiz for quiz in current_app.config["QUIZZES"]
@@ -109,9 +111,28 @@ def home():
             team_quiz = next((quiz for quiz in fixtures if _availability(quiz) == "upcoming"), None)
         if team_quiz is not None:
             team_status = _availability(team_quiz)
+            team_next_starts_at = min(
+                (quiz.unlock_at for quiz in fixtures
+                 if quiz.quiz_id != team_quiz.quiz_id and quiz.total_players
+                 and quiz.unlock_at > now),
+                default=None,
+            )
+    identity = g.user["id"] if g.user is not None else session.get("visitor_id")
+
+    def final_result(quiz):
+        if quiz is None or not quiz.total_players or identity is None:
+            return None
+        state = get_progress(identity, quiz.quiz_id)
+        if state["given_up"] or game_completed(quiz, state):
+            return {"found": len(set(state["solved"])), "total": quiz.total_players}
+        return None
+
     return render_template(
         "home.html", daily_quiz=daily_quiz, daily_closes_at=daily_closes_at,
         team_quiz=team_quiz,
+        daily_result=final_result(daily_quiz),
+        team_result=final_result(team_quiz) if team_status == "playable" else None,
+        team_next_starts_at=team_next_starts_at,
         team_status=team_status, badge_files=BADGE_FILES, hide_featured_banner=True,
     )
 

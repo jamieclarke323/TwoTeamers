@@ -3,6 +3,7 @@
 .home-panel h2{font:clamp(1.15rem,3vw,1.65rem) var(--display);margin:0}
 .home-panel p{margin:0;color:var(--muted)}
 .home-countdown{font:inherit;font-variant-numeric:tabular-nums}
+.home-final-score{font-size:1.2rem}
 .home-countdown-urgent{color:var(--red)}
 a.home-panel:hover,button.home-panel:hover{transform:translateY(-2px);box-shadow:5px 5px 0 var(--ink)}
 .home-panel:focus-visible{outline:3px solid var(--green);outline-offset:4px}

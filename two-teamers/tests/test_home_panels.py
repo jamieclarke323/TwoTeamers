@@ -1,4 +1,5 @@
-from datetime import datetime
+from dataclasses import replace
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -45,6 +46,57 @@ def test_home_countdowns_absent_without_featured_or_playable_team_game(
     page = offline_client.get("/").get_data(as_text=True)
     assert "Locked" in page
     assert "data-closes-at=" not in page
+
+
+@pytest.mark.parametrize("signed_in", [False, True])
+@pytest.mark.parametrize("finish, expected", [("solved", "2/2"), ("giveup", "1/2"), ("revealed", "1/2")])
+def test_finished_home_cards_show_found_score_and_next_deadline(
+    offline_app, offline_client, monkeypatch, signed_in, finish, expected
+):
+    quiz = offline_app.config["QUIZZES"][0]
+    now = datetime.now(QUIZ_TIMEZONE)
+    quiz.fixture_date = now
+    later = replace(quiz, quiz_id="next-team", fixture_date=now + timedelta(days=4))
+    sooner = replace(quiz, quiz_id="sooner-team", fixture_date=now + timedelta(days=3))
+    empty = replace(quiz, quiz_id="empty-team", fixture_date=now + timedelta(days=2), players=[])
+    offline_app.config["QUIZZES"] = [quiz, later, empty, sooner]
+    monkeypatch.setattr("app.routes.todays_featured_quiz", lambda: quiz)
+    if signed_in:
+        offline_client.post("/signup", data={
+            "email": "finished@example.com", "password": "football123", "supported_team": "Home",
+        })
+    offline_client.post("/quiz/offline-test/clue", json={"types": ["initials"], "index": 0})
+    offline_client.post("/quiz/offline-test/guess", json={"guess": "Gudmundsson"})
+    partial = offline_client.get("/").get_data(as_text=True)
+    assert "Final score:" not in partial
+    if finish == "solved":
+        offline_client.post("/quiz/offline-test/guess", json={"guess": "Aanholt"})
+    elif finish == "giveup":
+        offline_client.post("/quiz/offline-test/giveup", json={"confirm": True})
+    else:
+        offline_client.post("/quiz/offline-test/giveup-answer", json={"confirm": True, "index": 1})
+    page = offline_client.get("/").get_data(as_text=True)
+    assert page.count(f"Final score: {expected} found") == (2 if signed_in else 1)
+    daily = page.split('class="home-panel featured-home-panel"', 1)[1].split("</a>", 1)[0]
+    midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), QUIZ_TIMEZONE)
+    assert f'data-closes-at="{midnight.isoformat()}" data-countdown-kind="next"' in daily
+    if signed_in:
+        team = page.split('class="home-panel your-team-panel"', 1)[1].split("</a>", 1)[0]
+        assert f'data-closes-at="{sooner.unlock_at.isoformat()}" data-countdown-kind="next"' in team
+        other = offline_app.test_client()
+        assert "Final score:" not in other.get("/").get_data(as_text=True)
+    offline_client.post("/quiz/offline-test/reset", json={})
+    assert "Final score:" not in offline_client.get("/").get_data(as_text=True)
+
+
+def test_finished_team_without_future_fixture_has_no_invented_countdown(offline_app, offline_client):
+    offline_client.post("/signup", data={
+        "email": "noschedule@example.com", "password": "football123", "supported_team": "Home",
+    })
+    offline_client.post("/quiz/offline-test/giveup", json={"confirm": True})
+    page = offline_client.get("/").get_data(as_text=True)
+    assert "Final score: 0/2 found" in page
+    assert "Next game not scheduled" in page
 
 
 def test_guest_home_has_four_panels_and_login_toast(client):

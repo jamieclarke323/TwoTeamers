@@ -20,6 +20,8 @@ All regular and featured games unlock at **00:00 UK time on their fixture date**
 
 The home page displays live closing countdowns that tick every second in the card's body font and turn red during the final hour: the Daily Game counts down to the next UK midnight after its featured date, while a playable My Team game uses its existing `lock_at` deadline and therefore follows changes to `PLAYABLE_HOURS`. The two countdowns intentionally differ even when they represent the same fixture. At zero, a countdown reads "Closed"; this display does not change game availability rules.
 
+Once all answers are guessed or revealed, or the player gives up, the home card instead displays the final players-found score (matching Share result, not the frozen competition score). Its countdown reads "Next game starts in": the Daily Game uses next UK midnight even if that day's fixture is not scheduled, and My Team uses the earliest future unlock time of a supported-team fixture with answers. If no such team fixture exists it reads "Next game not scheduled". At zero, next-game timers prompt a refresh rather than claiming a fixture is available. Results use the signed-in account or existing guest session; reset returns the card to its unfinished state. Unsynced offline results appear after syncing.
+
 Production must set a unique random `SECRET_KEY` of at least 32 characters and `SESSION_COOKIE_SECURE=1`, plus persistent `DATABASE_PATH`, `FIXTURES_DIR`, and `PLAYERS_XLSX_PATH` values. Unsafe production session settings fail at startup. `python run.py` explicitly opts into local development; production must use WSGI, not the debug server. Keep an existing safe secret stable: rotating it invalidates sessions and offline sync tokens.
 
 ## Security, backups and recovery
